@@ -6,6 +6,7 @@ import src.tankProgram.Launcher;
 import src.tankProgram.menus.EndGamePanel;
 
 import javax.imageio.ImageIO;
+import javax.sound.sampled.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -44,6 +45,26 @@ public class GameWorld extends JPanel implements Runnable {
     private BufferedImage healthBoostImg;
     private BufferedImage halfHealthImg;
 
+    private Clip powerDownPickupClip;
+    private Clip powerUpPickupClip;
+    private Clip tankDeathClip;
+    private Clip tankLifeDownClip;
+
+    private Clip backgroundMusicClip;
+    private Clip bulletHitTankClip;
+
+    private BufferedImage[] animationImages;
+
+    private BufferedImage[] explosionImages;
+    private BufferedImage[] powerUpImages;
+    private BufferedImage[] powerDownImages;
+
+    private int currentAnimationFrame = 0;
+    private long lastAnimationTime = 0;
+    private boolean isAnimating = false;
+    private int animationX = 0;
+    private int animationY = 0;
+
 
     /**
      *
@@ -60,6 +81,14 @@ public class GameWorld extends JPanel implements Runnable {
                 this.t1.update(this.t2); // update tank
                 this.t2.update(this.t1); // update tank
                 this.update();
+
+
+//                for (ExplosionAnimation explosion : activeExplosionsT1) {
+//                    explosion.update();
+//                }
+//                for (ExplosionAnimation explosion : activeExplosionsT2) {
+//                    explosion.update();
+//                }
                 this.repaint();   // redraw game
                 /*
                  * Sleep for 1000/144 ms (~6.9ms). This is done to have our 
@@ -77,6 +106,8 @@ public class GameWorld extends JPanel implements Runnable {
      */
     public void resetGame() {
         this.tick = 0;
+        isAnimating = false;
+
         this.t1.setX(300);
         this.t1.setY(300);
         this.t1.setHealth(100);
@@ -115,6 +146,13 @@ public class GameWorld extends JPanel implements Runnable {
 
         BufferedImage t1img = null;
         BufferedImage t2Img = null;
+
+        int numFrames = 6; // Adjust based on the number of frames you have
+        explosionImages = new BufferedImage[numFrames];
+        powerUpImages = new BufferedImage[numFrames];
+        animationImages = new BufferedImage[numFrames];
+        powerDownImages = new BufferedImage[numFrames];
+
         try {
             /*
              * note class loaders read files from the out folder (build folder in Netbeans) and not the
@@ -135,12 +173,12 @@ public class GameWorld extends JPanel implements Runnable {
             );
 
             wallImg = ImageIO.read(
-                    Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/Wall1.png"),
-                    "Could not find Wall1.gif")
+                    Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/stone_wall01.jpg"),
+                    "Could not find Wall1.png")
             );
 
             breakableWallImg = ImageIO.read(
-                    Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/Wall2.png"),
+                    Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/wall2.png"),
                     "Could not find Wall2.png")
             );
 
@@ -162,13 +200,76 @@ public class GameWorld extends JPanel implements Runnable {
 
             halfHealthImg = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/halfHealthHeart.png"),
                     "Could not find halfHealthHeart.png"));
-            halfHealthImg = resizeImage(halfHealthImg, 50, 50); // Adjust size as needed
+            halfHealthImg = resizeImage(halfHealthImg, 50, 50);
+
+            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(
+                    Objects.requireNonNull(getClass().getClassLoader().getResource("resources/powerDown.wav"),
+                            "Could not find powerDown.wav"));
+            powerDownPickupClip = AudioSystem.getClip();
+            powerDownPickupClip.open(audioInputStream);
+
+            AudioInputStream audioInputStream2 = AudioSystem.getAudioInputStream(
+                    Objects.requireNonNull(getClass().getClassLoader().getResource("resources/PowerUp.wav"),
+                            "Could not find powerUp.wav"));
+            powerUpPickupClip = AudioSystem.getClip();
+            powerUpPickupClip.open(audioInputStream2);
+
+            AudioInputStream audioInputStream3 = AudioSystem.getAudioInputStream(
+                    Objects.requireNonNull(getClass().getClassLoader().getResource("resources/TankDeath.wav"),
+                            "Could not find Explosion_large.wav"));
+            tankDeathClip = AudioSystem.getClip();
+            tankDeathClip.open(audioInputStream3);
+
+            AudioInputStream audioInputStream4 = AudioSystem.getAudioInputStream(
+                    Objects.requireNonNull(getClass().getClassLoader().getResource("resources/TankLifeDown.wav"),
+                            "Could not find Explosion_large.wav"));
+            tankLifeDownClip = AudioSystem.getClip();
+            tankLifeDownClip.open(audioInputStream4);
+
+            AudioInputStream backgroundMusicStream = AudioSystem.getAudioInputStream(
+                    Objects.requireNonNull(getClass().getClassLoader().getResource("resources/Music.mid"),
+                            "Could not find Music.wav"));
+            backgroundMusicClip = AudioSystem.getClip();
+            backgroundMusicClip.open(backgroundMusicStream);
+
+            AudioInputStream bulletHitTankStream = AudioSystem.getAudioInputStream(
+                    Objects.requireNonNull(getClass().getClassLoader().getResource("resources/Explosion_small.wav"),
+                            "Could not find Explosion_small.wav"));
+            bulletHitTankClip = AudioSystem.getClip();
+            bulletHitTankClip.open(bulletHitTankStream);
+
+            explosionImages[0] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/explosion_lg/explosion_lg_0001.png")));
+            explosionImages[1] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/explosion_lg/explosion_lg_0002.png")));
+            explosionImages[2] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/explosion_lg/explosion_lg_0003.png")));
+            explosionImages[3] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/explosion_lg/explosion_lg_0004.png")));
+            explosionImages[4] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/explosion_lg/explosion_lg_0005.png")));
+            explosionImages[5] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/explosion_lg/explosion_lg_0007.png")));
+
+            powerDownImages[0] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/explosion_sm/explosion_sm_0001.png")));
+            powerDownImages[1] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/explosion_sm/explosion_sm_0002.png")));
+            powerDownImages[2] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/explosion_sm/explosion_sm_0003.png")));
+            powerDownImages[3] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/explosion_sm/explosion_sm_0004.png")));
+            powerDownImages[4] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/explosion_sm/explosion_sm_0005.png")));
+            powerDownImages[5] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/explosion_sm/explosion_sm_0006.png")));
+
+            powerUpImages[0] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/BlueFlame/blue_flame_1.png")));
+            powerUpImages[1] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/BlueFlame/blue_flame_2.png")));
+            powerUpImages[2] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/BlueFlame/blue_flame_3.png")));
+            powerUpImages[3] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/BlueFlame/blue_flame_4.png")));
+            powerUpImages[4] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/BlueFlame/blue_flame_5.png")));
+            powerUpImages[5] = ImageIO.read(Objects.requireNonNull(GameWorld.class.getClassLoader().getResource("resources/BlueFlame/blue_flame_6.png")));
+
+
 
 
 
         } catch (IOException ex) {
             System.out.println(ex.getMessage());
             ex.printStackTrace();
+        } catch (UnsupportedAudioFileException e) {
+            throw new RuntimeException(e);
+        } catch (LineUnavailableException e) {
+            throw new RuntimeException(e);
         }
 
         t1 = new Tank(300, 300, 0, 0, (short) 0, t1img, bulletImg);
@@ -184,6 +285,7 @@ public class GameWorld extends JPanel implements Runnable {
         this.lf.getJf().addKeyListener(tc2);
 
         generateWalls();
+        playBackgroundMusic();
 
     }
 
@@ -194,6 +296,32 @@ public class GameWorld extends JPanel implements Runnable {
         g2d.drawImage(resultingImage, 0, 0, null);
         g2d.dispose();
         return outputImage;
+    }
+
+    public void startAnimation(int x, int y, BufferedImage[] imgArray) {
+        this.animationX = x;
+        this.animationY = y;
+        this.currentAnimationFrame = 0;
+        this.isAnimating = true;
+        this.lastAnimationTime = System.currentTimeMillis();
+        this.animationImages = imgArray;
+
+    }
+
+    public void drawAnimation(Graphics g, BufferedImage[] animationImages) {
+        if (isAnimating) {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastAnimationTime > 100) { // Change frame every 100ms
+                currentAnimationFrame++;
+                lastAnimationTime = currentTime;
+            }
+
+            if (currentAnimationFrame < animationImages.length) {
+                g.drawImage(animationImages[currentAnimationFrame], animationX, animationY, null);
+            } else {
+                isAnimating = false; // End animation
+            }
+        }
     }
 
 
@@ -247,6 +375,14 @@ public class GameWorld extends JPanel implements Runnable {
         int t2CameraX = Math.max(0, Math.min((int) t2.getX() - splitScreenWidth / 2, GameConstants.GAME_WORLD_WIDTH - splitScreenWidth));
         int t2CameraY = Math.max(0, Math.min((int) t2.getY() - splitScreenHeight / 2, GameConstants.GAME_WORLD_HEIGHT - splitScreenHeight));
 
+//        for (ExplosionAnimation explosion : activeExplosionsT1) {
+//            explosion.render(g2, explosion.getX(), explosion.getY()); // Provide x and y coordinates for each explosion
+//        }
+//        for (ExplosionAnimation explosion : activeExplosionsT2) {
+//            explosion.render(g2, explosion.getX(), explosion.getY()); // Provide x and y coordinates for each explosion
+//        }
+
+
         // Draw the left half (for t1)
         g2.drawImage(world.getSubimage(t1CameraX, t1CameraY, splitScreenWidth, splitScreenHeight), 0, 0, null);
 
@@ -275,6 +411,18 @@ public class GameWorld extends JPanel implements Runnable {
 
         // Draw the mini-map
         drawMiniMap(g2);
+
+        //draw explosion at x,y
+        drawAnimation(g, animationImages);
+
+
+//        for (ExplosionAnimation explosion : activeExplosionsT1) {
+//            explosion.render(g2, (int) t1.getX(), (int) t1.getY()); // Provide x and y coordinates for each explosion
+//        }
+//
+//        for (ExplosionAnimation explosion : activeExplosionsT2) {
+//            explosion.render(g2, (int) t2.getX(), (int) t2.getY()); // Provide x and y coordinates for each explosion
+//        }
     }
 
 //    private void drawPlayerInfo(Graphics2D g, Tank tank, int x, int y) {
@@ -302,6 +450,19 @@ public class GameWorld extends JPanel implements Runnable {
 ////        g.setColor(Color.WHITE);
 ////        g.drawString("Lives: " + tank.getLives(), x + GameConstants.HEALTH_BAR_WIDTH + 60, y + 15);
 //    }
+
+    private void playBackgroundMusic() {
+        if (backgroundMusicClip != null) {
+            backgroundMusicClip.loop(Clip.LOOP_CONTINUOUSLY); // Loop the music continuously
+        }
+    }
+
+    private void stopBackgroundMusic() {
+        if (backgroundMusicClip != null && backgroundMusicClip.isRunning()) {
+            backgroundMusicClip.stop();
+        }
+    }
+
 
     private void drawPlayerInfo(Graphics2D g, Tank tank, int x, int y, String playerLabel, boolean isPlayer1) {
         // Draw lives (heart icons)
@@ -477,22 +638,15 @@ public class GameWorld extends JPanel implements Runnable {
         }
     }
 
-//    private void checkPowerUpCollisions(Tank tank) {
-//        for (Wall wall : walls) {
-//            if (wall.isDestroyed() && wall.isDoubleDamage() && !tank.isDoubleDamage()) {
-//                Rectangle tankBounds = tank.getBounds();
-//                Rectangle powerUpBounds = new Rectangle((int) wall.getX(), (int) wall.getY(), (int) wall.getWidth(), (int) wall.getHeight());
-//
-//                if (tankBounds.intersects(powerUpBounds)) {
-//                    tank.setDoubleDamage(true);
-//                    wall.setDoubleDamage(false);
-//                    wall.setPowerUpVisible(false);// Remove power-up from map
-//                }
-//            }
-//        }
-//    }
 
-    // GameWorld.java
+    private void playSound(Clip clip) {
+        if (clip != null) {
+            clip.setFramePosition(0); // Rewind to the beginning
+            clip.start(); // Start playing
+        }
+    }
+
+
     private void checkPowerUpCollisions(Tank tank) {
         for (Wall wall : walls) {
             if (wall.isDestroyed() && wall.isPowerUpVisible()) {
@@ -503,17 +657,25 @@ public class GameWorld extends JPanel implements Runnable {
                     if (wall.isDoubleDamage() && !tank.isDoubleDamage()) {
                         tank.setDoubleDamage(true);
 //                        wall.setDoubleDamage(false);
-
+                        playSound(powerUpPickupClip);
+                        wall.setPowerUpVisible(false); // Remove power-up from map
+                        startAnimation(400, 500, powerUpImages);
                     } else if (wall.isHealthBoost() && !tank.isHealthBoost()) {
                         tank.setHealthBoost(true);
                         tank.setHealth(200); // Set health to 200
 //                        wall.setHealthBoost(false);
+                        playSound(powerUpPickupClip);
+                        wall.setPowerUpVisible(false); // Remove power-up from map
+                        startAnimation(400, 500, powerUpImages);
                     } else if (wall.isHalfHealth() && !tank.isHalfHealth()) {
                         tank.setHalfHealth(true);
                         tank.setHealth(tank.getHealth() / 2); // Halve the current health
 //                        wall.setHalfHealth(false);
+                        playSound(powerDownPickupClip);
+                        wall.setPowerUpVisible(false); // Remove power-up from map
+                        startAnimation(400, 500, powerDownImages);
                     }
-                    wall.setPowerUpVisible(false); // Remove power-up from map
+
 
                     // Additional power-up checks can be added here in the future
                 }
@@ -554,16 +716,27 @@ public class GameWorld extends JPanel implements Runnable {
                 }
                 if (bullet.getBounds().intersects(t2.getBounds())) {
                     bulletsToRemove.add(bullet);
+                    playSound(bulletHitTankClip);
 
                     if (t1.isDoubleDamage()){
                         t2.reduceHealth(40); // Reduce health by 40 for powerup
                     }else {
                         t2.reduceHealth(20); // Reduce health by 20
                     }
+
+
+
                     if (t2.getHealth() <= 0) {
 
                         int lifeCount = t2.getLives() - 1;
                         t2.setLives(lifeCount);
+
+                        if (t2.getLives() < 1) {
+                            playSound(tankDeathClip);
+                        } else {
+                            playSound(tankLifeDownClip);
+                        }
+//                        activeExplosions.add(new ExplosionAnimation(explosionImages, 100));
 
                         if (t2.getLives() <= 0){
                             showEndGameScreen("Player 1 Wins!");
@@ -577,6 +750,7 @@ public class GameWorld extends JPanel implements Runnable {
                         this.t2.setHealth(100);
                         this.t2.setAngle((short) 0);
                         this.t2.setDoubleDamage(false);
+                        startAnimation(1125, 625, explosionImages); // animation for death
 
 
 
@@ -585,7 +759,6 @@ public class GameWorld extends JPanel implements Runnable {
             }
         }
         t1.getBullets().removeAll(bulletsToRemove);
-        bulletsToRemove.clear();
 
         for (Bullet bullet : t2.getBullets()) {
             if (!bullet.isDestroyed()) {
@@ -595,8 +768,6 @@ public class GameWorld extends JPanel implements Runnable {
                         if (wall.isDestructible()) {
                             wall.setDestroyed(true);
                             if (wall.isDoubleDamage()){
-                                // draw powerup img on gameboard and check if tank collides with it
-                                // if collision detected set isDoubleDamage for tank object to be true
                                 wall.setPowerUpImg(doubleDamageImg); // Set the power-up image
                                 wall.setPowerUpVisible(true); // Make the power-up visible
                             }
@@ -615,6 +786,7 @@ public class GameWorld extends JPanel implements Runnable {
                 }
                 if (bullet.getBounds().intersects(t1.getBounds())) {
                     bulletsToRemove.add(bullet);
+                    playSound(bulletHitTankClip);
 
                     if (t2.isDoubleDamage()) {
                         t1.reduceHealth(40); // Reduce health by 40
@@ -623,10 +795,18 @@ public class GameWorld extends JPanel implements Runnable {
                     }
 
 
+
                     if (t1.getHealth() <= 0) {
 
                         int lifeCount = t1.getLives() - 1;
                         t1.setLives(lifeCount);
+
+                        if (t1.getLives() < 1) {
+                            playSound(tankDeathClip);
+                        } else {
+                            playSound(tankLifeDownClip);
+                        }
+
 
                         if (t1.getLives() <= 0) {
                             showEndGameScreen("Player 2 Wins!");
@@ -640,12 +820,15 @@ public class GameWorld extends JPanel implements Runnable {
                         this.t1.setHealth(100);
                         this.t1.setAngle((short) 0);
                         this.t1.setDoubleDamage(false);
+                        startAnimation(300, 300, explosionImages); // animation for death
 
                     }
                 }
             }
         }
         t2.getBullets().removeAll(bulletsToRemove);
+        bulletsToRemove.clear();
+
     }
 
     private void showEndGameScreen(String winnerMessage) {
@@ -680,84 +863,7 @@ public class GameWorld extends JPanel implements Runnable {
         checkPowerUpCollisions(t1);
         checkPowerUpCollisions(t2);
 
-        // Potentially add similar checks for other tanks, bullets, etc.
     }
-
-
-
-
-
-//    private void generateWalls() {
-//        walls = new ArrayList<>();
-//
-//        // Border walls (unbreakable)
-//        for (int x = 0; x <= GameConstants.GAME_SCREEN_WIDTH - 50; x += 50) {
-//            walls.add(new Wall(x, 0, 50, 50, false, wallImg)); // Top border
-//            walls.add(new Wall(x, GameConstants.GAME_SCREEN_HEIGHT - 50, 50, 50, false, wallImg)); // Bottom border
-//        }
-//        for (int y = 0; y <= GameConstants.GAME_SCREEN_HEIGHT - 50; y += 50) {
-//            walls.add(new Wall(0, y, 50, 50, false, wallImg)); // Left border
-//            walls.add(new Wall(GameConstants.GAME_SCREEN_WIDTH - 50, y, 50, 50, false, wallImg)); // Right border
-//        }
-//
-//        // Internal structures
-//        // Example: central corridor (unbreakable walls)
-//        for (int x = 250; x <= GameConstants.GAME_SCREEN_WIDTH - 250; x += 50) {
-//            walls.add(new Wall(x, GameConstants.GAME_SCREEN_HEIGHT / 2 - 40, 50, 50, false, wallImg));
-//        }
-//
-//        // Example: L-shaped structure (breakable and unbreakable)
-//        for (int x = 100; x <= 250; x += 50) {
-//            walls.add(new Wall(x, 200, 50, 50, true, breakableWallImg)); // Breakable
-//        }
-//        for (int y = 250; y <= 350; y += 50) {
-//            walls.add(new Wall(250, y, 50, 50, false, wallImg)); // Unbreakable
-//        }
-//
-//        // Example: square room with mixed walls
-//        // breakable walls
-//        for (int x = 700; x <= 850; x += 50) {
-//            for (int y = 500; y <= 650; y += 50) {
-//                if (x == 700 || x == 850 || y == 500 || y == 650) {
-//                    walls.add(new Wall(x, y, 50, 50, true, breakableWallImg));
-//                }
-//            }
-//        }
-//        // breakable walls below the existing square to the bottom edge of the game border
-//        for (int x = 700; x <= 850; x += 50) {
-//            for (int y = 700; y <= GameConstants.GAME_SCREEN_HEIGHT - 50; y += 50) {
-//                walls.add(new Wall(x, y, 50, 50, true, breakableWallImg));
-//            }
-//        }
-//        // unbreakable walls inside the room
-//        walls.add(new Wall(750, 550, 50, 50, false, wallImg));
-//        walls.add(new Wall(750, 600, 50, 50, false, wallImg));
-//        walls.add(new Wall(800, 550, 50, 50, false, wallImg));
-//        walls.add(new Wall(800, 600, 50, 50, false, wallImg));
-//
-//        // Example: Maze-like area (unbreakable walls)
-//        int[][] mazeCoords = {
-//                {1200, 150}, {1250, 150}, {1300, 150}, {1200, 200}, {1200, 250},
-//                {1250, 250}, {1300, 250}, {1350, 250}, {1350, 200}, {1350, 150},
-//                {1200, 400}, {1200, 450}, {1250, 450}, {1300, 450}, {1350, 450},
-//                {1350, 400}, {1350, 350}, {1300, 350}, {1250, 350}, {1200, 350},
-//        };
-//        for (int[] coord : mazeCoords) {
-//            walls.add(new Wall(coord[0], coord[1], 50, 50, false, wallImg));
-//        }
-//
-//        int[][] newMazeCoords = {
-//                {1150, 550}, {1200, 550}, {1250, 550}, {1150, 600}, {1150, 650},
-//                {1200, 650}, {1250, 650}, {1300, 650}, {1300, 600}, {1300, 550},
-//                {1150, 800}, {1150, 850}, {1200, 850}, {1250, 850}, {1300, 850},
-//                {1300, 800}, {1300, 750}, {1250, 750}, {1200, 750}, {1150, 750},
-//        };
-//        for (int[] coord : newMazeCoords) {
-//            walls.add(new Wall(coord[0], coord[1], 50, 50, false, wallImg));
-//        }
-//    }
-
-
 
 //    private void generateWalls() {
 //        walls = new ArrayList<>();
@@ -776,27 +882,67 @@ public class GameWorld extends JPanel implements Runnable {
 //            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - wallWidth, y, wallWidth, wallHeight, false, wallImg)); // Right border
 //        }
 //
-//        // Corner Structures (Unbreakable Walls)
-//        int[][] cornerCoords = {
-//                {100, 100}, {150, 100}, {100, 150}, {150, 150}, // Top-left corner
-//                {GameConstants.GAME_WORLD_WIDTH - 200, 100}, {GameConstants.GAME_WORLD_WIDTH - 150, 100},
-//                {GameConstants.GAME_WORLD_WIDTH - 200, 150}, {GameConstants.GAME_WORLD_WIDTH - 150, 150}, // Top-right corner
-//                {100, GameConstants.GAME_WORLD_HEIGHT - 200}, {150, GameConstants.GAME_WORLD_HEIGHT - 200},
-//                {100, GameConstants.GAME_WORLD_HEIGHT - 150}, {150, GameConstants.GAME_WORLD_HEIGHT - 150}, // Bottom-left corner
-//                {GameConstants.GAME_WORLD_WIDTH - 200, GameConstants.GAME_WORLD_HEIGHT - 200},
-//                {GameConstants.GAME_WORLD_WIDTH - 150, GameConstants.GAME_WORLD_HEIGHT - 200},
-//                {GameConstants.GAME_WORLD_WIDTH - 200, GameConstants.GAME_WORLD_HEIGHT - 150},
-//                {GameConstants.GAME_WORLD_WIDTH - 150, GameConstants.GAME_WORLD_HEIGHT - 150}, // Bottom-right corner
+//        // Central Horizontal Line (Breakable Walls)
+//        int centerY = GameConstants.GAME_WORLD_HEIGHT / 2;
+//        for (int x = wallWidth * 2; x <= GameConstants.GAME_WORLD_WIDTH - wallWidth * 2; x += wallWidth) {
+////            walls.add(new Wall(x, centerY - 50, wallWidth, wallHeight, true, breakableWallImg));
+//            walls.add(new Wall(x, centerY, wallWidth, wallHeight, true, breakableWallImg));
+//            walls.add(new Wall(x, centerY  + 50, wallWidth, wallHeight, true, breakableWallImg));
+//        }
+//
+//        // Central Vertical Line (Breakable Walls)
+//        int centerX = GameConstants.GAME_WORLD_WIDTH / 2;
+//        for (int y = 0; y < GameConstants.GAME_WORLD_HEIGHT; y += wallHeight) {
+////            walls.add(new Wall(centerX - 50, centerY, wallWidth, wallHeight, true, breakableWallImg));
+//            walls.add(new Wall(centerX, y, wallWidth, wallHeight, true, breakableWallImg));
+////            walls.add(new Wall(centerX + 50, centerY, wallWidth, wallHeight, true, breakableWallImg));
+//        }
+//
+//        // Symmetric Square and Rectangular Structures (Unbreakable)
+//        int[][] symmetricalCoords = {
+//                // Top-left
+//                {100, 100}, {150, 100}, {200, 100}, {250, 100}, {300, 100}, {350, 100},
+//                {100, 150}, {100, 200}, {100, 250}, {100, 300}, {100, 350},
+//                {150, 350}, {200, 350}, {250, 350}, {300, 350}, {350, 350},
+//                // Top-right
+//                {GameConstants.GAME_WORLD_WIDTH - 100, 100}, {GameConstants.GAME_WORLD_WIDTH - 150, 100},
+//                {GameConstants.GAME_WORLD_WIDTH - 200, 100}, {GameConstants.GAME_WORLD_WIDTH - 250, 100},
+//                {GameConstants.GAME_WORLD_WIDTH - 300, 100}, {GameConstants.GAME_WORLD_WIDTH - 350, 100},
+//                {GameConstants.GAME_WORLD_WIDTH - 100, 150}, {GameConstants.GAME_WORLD_WIDTH - 100, 200},
+//                {GameConstants.GAME_WORLD_WIDTH - 100, 250}, {GameConstants.GAME_WORLD_WIDTH - 100, 300},
+//                {GameConstants.GAME_WORLD_WIDTH - 100, 350}, {GameConstants.GAME_WORLD_WIDTH - 150, 350},
+//                {GameConstants.GAME_WORLD_WIDTH - 200, 350}, {GameConstants.GAME_WORLD_WIDTH - 250, 350},
+//                {GameConstants.GAME_WORLD_WIDTH - 300, 350}, {GameConstants.GAME_WORLD_WIDTH - 350, 350},
 //        };
-//        for (int[] coord : cornerCoords) {
+//        for (int[] coord : symmetricalCoords) {
 //            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg));
 //        }
 //
-//        // Random Rectangles (Unbreakable Walls)
-//        int[][] randomCoords = {
-//                {200, 300}, {200, 350}, {250, 300}, {250, 350},
-//                {GameConstants.GAME_WORLD_WIDTH - 300, 300}, {GameConstants.GAME_WORLD_WIDTH - 300, 350},
-//                {GameConstants.GAME_WORLD_WIDTH - 250, 300}, {GameConstants.GAME_WORLD_WIDTH - 250, 350},
+//        // Additional Maze-like Structures (Unbreakable)
+//        int[][] additionalMazeCoords = {
+//                {600, 600}, {650, 600}, {700, 600}, {750, 600}, {800, 600},
+//                {600, 650}, {600, 700}, {600, 750}, {600, 800},
+//                {650, 800}, {700, 800}, {750, 800}, {800, 800},
+//                {800, 750}, {800, 700}, {800, 650},
+//                // Symmetrical right side
+//                {GameConstants.GAME_WORLD_WIDTH - 600, 600}, {GameConstants.GAME_WORLD_WIDTH - 650, 600},
+//                {GameConstants.GAME_WORLD_WIDTH - 700, 600}, {GameConstants.GAME_WORLD_WIDTH - 750, 600},
+//                {GameConstants.GAME_WORLD_WIDTH - 800, 600}, {GameConstants.GAME_WORLD_WIDTH - 600, 650},
+//                {GameConstants.GAME_WORLD_WIDTH - 600, 700}, {GameConstants.GAME_WORLD_WIDTH - 600, 750},
+//                {GameConstants.GAME_WORLD_WIDTH - 600, 800}, {GameConstants.GAME_WORLD_WIDTH - 650, 800},
+//                {GameConstants.GAME_WORLD_WIDTH - 700, 800}, {GameConstants.GAME_WORLD_WIDTH - 750, 800},
+//                {GameConstants.GAME_WORLD_WIDTH - 800, 800}, {GameConstants.GAME_WORLD_WIDTH - 800, 750},
+//                {GameConstants.GAME_WORLD_WIDTH - 800, 700}, {GameConstants.GAME_WORLD_WIDTH - 800, 650},
+//        };
+//        for (int[] coord : additionalMazeCoords) {
+//            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg));
+//        }
+//
+//        // Symmetric Squares and Rectangles
+//        int[][] squareCoords = {
+//                {200, 200}, {200, 250}, {250, 200}, {250, 250},
+//                {GameConstants.GAME_WORLD_WIDTH - 300, 200}, {GameConstants.GAME_WORLD_WIDTH - 300, 250},
+//                {GameConstants.GAME_WORLD_WIDTH - 250, 200}, {GameConstants.GAME_WORLD_WIDTH - 250, 250},
 //                {200, GameConstants.GAME_WORLD_HEIGHT - 300}, {200, GameConstants.GAME_WORLD_HEIGHT - 250},
 //                {250, GameConstants.GAME_WORLD_HEIGHT - 300}, {250, GameConstants.GAME_WORLD_HEIGHT - 250},
 //                {GameConstants.GAME_WORLD_WIDTH - 300, GameConstants.GAME_WORLD_HEIGHT - 300},
@@ -804,224 +950,11 @@ public class GameWorld extends JPanel implements Runnable {
 //                {GameConstants.GAME_WORLD_WIDTH - 250, GameConstants.GAME_WORLD_HEIGHT - 300},
 //                {GameConstants.GAME_WORLD_WIDTH - 250, GameConstants.GAME_WORLD_HEIGHT - 250},
 //        };
-//        for (int[] coord : randomCoords) {
+//        for (int[] coord : squareCoords) {
 //            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg));
 //        }
 //
-//        // Central Horizontal Line (Breakable Walls)
-//        int centerY = GameConstants.GAME_WORLD_HEIGHT / 2;
-//        for (int x = wallWidth * 2; x <= GameConstants.GAME_WORLD_WIDTH - wallWidth * 2; x += wallWidth) {
-//            walls.add(new Wall(x, centerY, wallWidth, wallHeight, true, breakableWallImg));
-//        }
-//
-//        // Central Vertical Line (Unbreakable Walls, 4 thick)
-//        int centerX = GameConstants.GAME_WORLD_WIDTH / 2;
-//        for (int y = 0; y < GameConstants.GAME_WORLD_HEIGHT; y += wallHeight) {
-//            for (int i = -75; i <= 75; i += wallWidth) {
-//                walls.add(new Wall(centerX + i, y, wallWidth, wallHeight, true, breakableWallImg));
-//            }
-//        }
-//
-//    ////     breakable walls below the existing square to the bottom edge of the game border
-//    //        for (int x = 700; x <= 850; x += 50) {
-//    //            for (int y = 700; y <= GameConstants.GAME_SCREEN_HEIGHT - 50; y += 50) {
-//    //                walls.add(new Wall(x, y, 50, 50, true, breakableWallImg));
-//    //            }
-//    //        }
-//            // unbreakable walls inside the room
-//        walls.add(new Wall(750, 550, 50, 50, false, wallImg));
-//        walls.add(new Wall(750, 600, 50, 50, false, wallImg));
-//        walls.add(new Wall(800, 550, 50, 50, false, wallImg));
-//        walls.add(new Wall(800, 600, 50, 50, false, wallImg));
-//
-//        // Example: Maze-like area (unbreakable walls)
-//        int[][] mazeCoords = {
-//                {1200, 150}, {1250, 150}, {1300, 150}, {1200, 200}, {1200, 250},
-//                {1250, 250}, {1300, 250}, {1350, 250}, {1350, 200}, {1350, 150},
-//                {1200, 400}, {1200, 450}, {1250, 450}, {1300, 450}, {1350, 450},
-//                {1350, 400}, {1350, 350}, {1300, 350}, {1250, 350}, {1200, 350},
-//        };
-//        for (int[] coord : mazeCoords) {
-//            walls.add(new Wall(coord[0], coord[1], 50, 50, false, wallImg));
-//        }
-//
-//        int[][] newMazeCoords = {
-//                {1150, 550}, {1200, 550}, {1250, 550}, {1150, 600}, {1150, 650},
-//                {1200, 650}, {1250, 650}, {1300, 650}, {1300, 600}, {1300, 550},
-//                {1150, 800}, {1150, 850}, {1200, 850}, {1250, 850}, {1300, 850},
-//                {1300, 800}, {1300, 750}, {1250, 750}, {1200, 750}, {1150, 750},
-//        };
-//        for (int[] coord : newMazeCoords) {
-//            walls.add(new Wall(coord[0], coord[1], 50, 50, false, wallImg));
-//        }
-//
-//        Wall breakableWall = new Wall(300, 500, wallWidth, wallHeight, true, breakableWallImg);
-//        breakableWall.setDoubleDamage(true);
-//        breakableWall.setPowerUpImg(doubleDamageImg);
-//        walls.add(breakableWall);
-//
-//        Wall breakableWallHealth = new Wall(400, 550, wallWidth, wallHeight, true, breakableWallImg);
-//        breakableWallHealth.setHealthBoost(true);
-//        breakableWallHealth.setPowerUpImg(healthBoostImg);
-//        walls.add(breakableWallHealth);
-//
-//
-//        // Additional Structures
-//        // Diagonal Line (Unbreakable Walls)
-//        for (int i = 0; i < 10; i++) {
-//            walls.add(new Wall(300 + i * wallWidth, 300 + i * wallHeight, wallWidth, wallHeight, false, wallImg));
-//            walls.add(new Wall(300 + i * wallWidth, 350 + i * wallHeight, wallWidth, wallHeight, false, wallImg));
-//        }
-//
-//        // L-Shaped Structure (Breakable Walls)
-//        for (int i = 0; i < 5; i++) {
-//            walls.add(new Wall(2000, 1500 + i * wallHeight, wallWidth, wallHeight, true, breakableWallImg));
-//            walls.add(new Wall(2000 + i * wallWidth, 1500, wallWidth, wallHeight, true, breakableWallImg));
-//        }
-//
-//        // T-Shaped Structure (Unbreakable Walls)
-//        for (int i = 0; i < 5; i++) {
-//            walls.add(new Wall(900, 1400 + i * wallHeight, wallWidth, wallHeight, false, wallImg));
-//        }
-//        for (int i = -2; i <= 2; i++) {
-//            walls.add(new Wall(900 + i * wallWidth, 1400, wallWidth, wallHeight, false, wallImg));
-//        }
-//
-//        // Maze-like area (unbreakable walls)
-//        int[][] mazeCoord1 = {
-//                {1200, 150}, {1250, 150}, {1300, 150}, {1200, 200}, {1200, 250},
-//                {1250, 250}, {1300, 250}, {1350, 250}, {1350, 200}, {1350, 150},
-//                {1200, 400}, {1200, 450}, {1250, 450}, {1300, 450}, {1350, 450},
-//                {1350, 400}, {1350, 350}, {1300, 350}, {1250, 350}, {1200, 350},
-//        };
-//        for (int[] coord : mazeCoords) {
-//            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg));
-//        }
-//
-//        int[][] mazeCoords2 = {
-//                {1150, 550}, {1200, 550}, {1250, 550}, {1150, 600}, {1150, 650},
-//                {1200, 650}, {1250, 650}, {1300, 650}, {1300, 600}, {1300, 550},
-//                {1150, 800}, {1150, 850}, {1200, 850}, {1250, 850}, {1300, 850},
-//                {1300, 800}, {1300, 750}, {1250, 750}, {1200, 750}, {1150, 750},
-//        };
-//        for (int[] coord : mazeCoords2) {
-//            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg));
-//        }
-//
-//    }
-
-
-    private void generateWalls() {
-        walls = new ArrayList<>();
-
-        // Define wall dimensions
-        int wallWidth = 50;
-        int wallHeight = 50;
-
-        // Unbreakable Border Walls
-        for (int x = 0; x <= GameConstants.GAME_WORLD_WIDTH - wallWidth; x += wallWidth) {
-            walls.add(new Wall(x, 0, wallWidth, wallHeight, false, wallImg)); // Top border
-            walls.add(new Wall(x, GameConstants.GAME_WORLD_HEIGHT - wallHeight, wallWidth, wallHeight, false, wallImg)); // Bottom border
-        }
-        for (int y = 0; y <= GameConstants.GAME_WORLD_HEIGHT - wallHeight; y += wallHeight) {
-            walls.add(new Wall(0, y, wallWidth, wallHeight, false, wallImg)); // Left border
-            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - wallWidth, y, wallWidth, wallHeight, false, wallImg)); // Right border
-        }
-
-        // Central Horizontal Line (Breakable Walls)
-        int centerY = GameConstants.GAME_WORLD_HEIGHT / 2;
-        for (int x = wallWidth * 2; x <= GameConstants.GAME_WORLD_WIDTH - wallWidth * 2; x += wallWidth) {
-            walls.add(new Wall(x, centerY, wallWidth, wallHeight, true, breakableWallImg));
-        }
-
-        // Central Vertical Line (Breakable Walls)
-        int centerX = GameConstants.GAME_WORLD_WIDTH / 2;
-        for (int y = 0; y < GameConstants.GAME_WORLD_HEIGHT; y += wallHeight) {
-            walls.add(new Wall(centerX, y, wallWidth, wallHeight, true, breakableWallImg));
-        }
-
-        // Symmetric Squares and Rectangles
-        int[][] squareCoords = {
-                {200, 200}, {200, 250}, {250, 200}, {250, 250},
-                {GameConstants.GAME_WORLD_WIDTH - 300, 200}, {GameConstants.GAME_WORLD_WIDTH - 300, 250},
-                {GameConstants.GAME_WORLD_WIDTH - 250, 200}, {GameConstants.GAME_WORLD_WIDTH - 250, 250},
-                {200, GameConstants.GAME_WORLD_HEIGHT - 300}, {200, GameConstants.GAME_WORLD_HEIGHT - 250},
-                {250, GameConstants.GAME_WORLD_HEIGHT - 300}, {250, GameConstants.GAME_WORLD_HEIGHT - 250},
-                {GameConstants.GAME_WORLD_WIDTH - 300, GameConstants.GAME_WORLD_HEIGHT - 300},
-                {GameConstants.GAME_WORLD_WIDTH - 300, GameConstants.GAME_WORLD_HEIGHT - 250},
-                {GameConstants.GAME_WORLD_WIDTH - 250, GameConstants.GAME_WORLD_HEIGHT - 300},
-                {GameConstants.GAME_WORLD_WIDTH - 250, GameConstants.GAME_WORLD_HEIGHT - 250},
-        };
-        for (int[] coord : squareCoords) {
-            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg));
-        }
-
-        // Symmetric Random Shapes
-        int[][] randomCoords = {
-                {400, 400}, {400, 450}, {450, 400}, {450, 450},
-                {GameConstants.GAME_WORLD_WIDTH - 500, 400}, {GameConstants.GAME_WORLD_WIDTH - 500, 450},
-                {GameConstants.GAME_WORLD_WIDTH - 450, 400}, {GameConstants.GAME_WORLD_WIDTH - 450, 450},
-                {400, GameConstants.GAME_WORLD_HEIGHT - 500}, {400, GameConstants.GAME_WORLD_HEIGHT - 450},
-                {450, GameConstants.GAME_WORLD_HEIGHT - 500}, {450, GameConstants.GAME_WORLD_HEIGHT - 450},
-                {GameConstants.GAME_WORLD_WIDTH - 500, GameConstants.GAME_WORLD_HEIGHT - 500},
-                {GameConstants.GAME_WORLD_WIDTH - 500, GameConstants.GAME_WORLD_HEIGHT - 450},
-                {GameConstants.GAME_WORLD_WIDTH - 450, GameConstants.GAME_WORLD_HEIGHT - 500},
-                {GameConstants.GAME_WORLD_WIDTH - 450, GameConstants.GAME_WORLD_HEIGHT - 450},
-        };
-        for (int[] coord : randomCoords) {
-            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg));
-        }
-
-        // Additional Symmetric Structures
-        int[][] additionalCoords = {
-                {600, 600}, {600, 650}, {650, 600}, {650, 650},
-                {GameConstants.GAME_WORLD_WIDTH - 700, 600}, {GameConstants.GAME_WORLD_WIDTH - 700, 650},
-                {GameConstants.GAME_WORLD_WIDTH - 650, 600}, {GameConstants.GAME_WORLD_WIDTH - 650, 650},
-                {600, GameConstants.GAME_WORLD_HEIGHT - 700}, {600, GameConstants.GAME_WORLD_HEIGHT - 650},
-                {650, GameConstants.GAME_WORLD_HEIGHT - 700}, {650, GameConstants.GAME_WORLD_HEIGHT - 650},
-                {GameConstants.GAME_WORLD_WIDTH - 700, GameConstants.GAME_WORLD_HEIGHT - 700},
-                {GameConstants.GAME_WORLD_WIDTH - 700, GameConstants.GAME_WORLD_HEIGHT - 650},
-                {GameConstants.GAME_WORLD_WIDTH - 650, GameConstants.GAME_WORLD_HEIGHT - 700},
-                {GameConstants.GAME_WORLD_WIDTH - 650, GameConstants.GAME_WORLD_HEIGHT - 650},
-        };
-        for (int[] coord : additionalCoords) {
-            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg));
-        }
-
-
-        // Corner Structures (Unbreakable Walls)
-        int[][] cornerCoords = {
-                {100, 100}, {150, 100}, {100, 150}, {150, 150}, // Top-left corner
-                {GameConstants.GAME_WORLD_WIDTH - 200, 100}, {GameConstants.GAME_WORLD_WIDTH - 150, 100},
-                {GameConstants.GAME_WORLD_WIDTH - 200, 150}, {GameConstants.GAME_WORLD_WIDTH - 150, 150}, // Top-right corner
-                {100, GameConstants.GAME_WORLD_HEIGHT - 200}, {150, GameConstants.GAME_WORLD_HEIGHT - 200},
-                {100, GameConstants.GAME_WORLD_HEIGHT - 150}, {150, GameConstants.GAME_WORLD_HEIGHT - 150}, // Bottom-left corner
-                {GameConstants.GAME_WORLD_WIDTH - 200, GameConstants.GAME_WORLD_HEIGHT - 200},
-                {GameConstants.GAME_WORLD_WIDTH - 150, GameConstants.GAME_WORLD_HEIGHT - 200},
-                {GameConstants.GAME_WORLD_WIDTH - 200, GameConstants.GAME_WORLD_HEIGHT - 150},
-                {GameConstants.GAME_WORLD_WIDTH - 150, GameConstants.GAME_WORLD_HEIGHT - 150}, // Bottom-right corner
-        };
-        for (int[] coord : cornerCoords) {
-            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg));
-        }
-
-        // Random Rectangles (Unbreakable Walls)
-        int[][] randomCoords1 = {
-                {200, 300}, {200, 350}, {250, 300}, {250, 350},
-                {GameConstants.GAME_WORLD_WIDTH - 300, 300}, {GameConstants.GAME_WORLD_WIDTH - 300, 350},
-                {GameConstants.GAME_WORLD_WIDTH - 250, 300}, {GameConstants.GAME_WORLD_WIDTH - 250, 350},
-                {200, GameConstants.GAME_WORLD_HEIGHT - 300}, {200, GameConstants.GAME_WORLD_HEIGHT - 250},
-                {250, GameConstants.GAME_WORLD_HEIGHT - 300}, {250, GameConstants.GAME_WORLD_HEIGHT - 250},
-                {GameConstants.GAME_WORLD_WIDTH - 300, GameConstants.GAME_WORLD_HEIGHT - 300},
-                {GameConstants.GAME_WORLD_WIDTH - 300, GameConstants.GAME_WORLD_HEIGHT - 250},
-                {GameConstants.GAME_WORLD_WIDTH - 250, GameConstants.GAME_WORLD_HEIGHT - 300},
-                {GameConstants.GAME_WORLD_WIDTH - 250, GameConstants.GAME_WORLD_HEIGHT - 250},
-        };
-        for (int[] coord : randomCoords1) {
-            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg));
-        }
-
-//         Example: Maze-like area (unbreakable walls)
+////        Example: Maze-like area (unbreakable walls)
 //        int[][] mazeCoords = {
 //                {1200, 150}, {1250, 150}, {1300, 150}, {1350, 150},
 //                {1200, 200}, {1350, 200},
@@ -1047,8 +980,119 @@ public class GameWorld extends JPanel implements Runnable {
 //        for (int[] coord : newMazeCoords) {
 //            walls.add(new Wall(coord[0], coord[1], 50, 50, false, wallImg));
 //        }
+//
+//        int[][] adjustedMazeCoords = {
+//                {1200, 150}, {1250, 150}, {1300, 150}, {1350, 150},
+//                {1200, 200}, {1350, 200},
+//                {1200, 250}, {1350, 250},
+//                {1200, 300}, {1250, 300}, {1300, 300}, {1350, 300},
+//                {1200, 350}, {1350, 350},
+//                {1200, 400}, {1350, 400},
+//                {1200, 450}, {1250, 450}, {1300, 450}, {1350, 450},
+//        };
+//        for (int[] coord : adjustedMazeCoords) {
+//            walls.add(new Wall(coord[0], coord[1], 50, 50, false, wallImg));
+//        }
+//
+//        int[][] adjustedNewMazeCoords = {
+//                {1150, 550}, {1200, 550}, {1250, 550}, {1300, 550}, {1350, 550},
+//                {1150, 600}, {1350, 600},
+//                {1150, 650}, {1350, 650},
+//                {1150, 700}, {1200, 700}, {1250, 700}, {1300, 700}, {1350, 700},
+//                {1150, 750}, {1350, 750},
+//                {1150, 800}, {1350, 800},
+//                {1150, 850}, {1200, 850}, {1250, 850}, {1300, 850}, {1350, 850},
+//        };
+//        for (int[] coord : adjustedNewMazeCoords) {
+//            walls.add(new Wall(coord[0], coord[1], 50, 50, false, wallImg));
+//        }
+//
+//
+//
+//
+//
+//        powerUpWalls(wallWidth, wallHeight);
+//    }
 
-        int[][] adjustedMazeCoords = {
+    private void generateWalls() {
+        walls = new ArrayList<>();
+
+        // Define wall dimensions
+        int wallWidth = 50;
+        int wallHeight = 50;
+
+        // Unbreakable Border Walls
+        for (int x = 0; x <= GameConstants.GAME_WORLD_WIDTH - wallWidth; x += wallWidth) {
+            walls.add(new Wall(x, 0, wallWidth, wallHeight, false, wallImg)); // Top border
+            walls.add(new Wall(x, GameConstants.GAME_WORLD_HEIGHT - wallHeight, wallWidth, wallHeight, false, wallImg)); // Bottom border
+        }
+        for (int y = 0; y <= GameConstants.GAME_WORLD_HEIGHT - wallHeight; y += wallHeight) {
+            walls.add(new Wall(0, y, wallWidth, wallHeight, false, wallImg)); // Left border
+            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - wallWidth, y, wallWidth, wallHeight, false, wallImg)); // Right border
+        }
+
+        // Central Horizontal Line (Breakable Walls)
+        int centerY = GameConstants.GAME_WORLD_HEIGHT / 2;
+        for (int x = wallWidth * 2; x <= GameConstants.GAME_WORLD_WIDTH - wallWidth * 2; x += wallWidth) {
+            walls.add(new Wall(x, centerY, wallWidth, wallHeight, true, breakableWallImg));
+            walls.add(new Wall(x, centerY  + 50, wallWidth, wallHeight, true, breakableWallImg));
+        }
+
+        // Central Vertical Line (Breakable Walls)
+        int centerX = GameConstants.GAME_WORLD_WIDTH / 2;
+        for (int y = 0; y < GameConstants.GAME_WORLD_HEIGHT; y += wallHeight) {
+            walls.add(new Wall(centerX, y, wallWidth, wallHeight, true, breakableWallImg));
+        }
+
+        // Symmetric Square and Rectangular Structures (Unbreakable) and Mirrored
+        int[][] symmetricalCoords = {
+                // Top-left
+                {100, 100}, {150, 100}, {200, 100}, {250, 100}, {300, 100}, {350, 100},
+                {100, 150}, {100, 200}, {100, 250}, {100, 300}, {100, 350},
+                {150, 350}, {200, 350}, {250, 350}, {300, 350}, {350, 350},
+        };
+        for (int[] coord : symmetricalCoords) {
+            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg)); // Top-left
+            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - coord[0] - wallWidth, coord[1], wallWidth, wallHeight, false, wallImg)); // Top-right
+            walls.add(new Wall(coord[0], GameConstants.GAME_WORLD_HEIGHT - coord[1] - wallHeight, wallWidth, wallHeight, false, wallImg)); // Bottom-left
+            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - coord[0] - wallWidth, GameConstants.GAME_WORLD_HEIGHT - coord[1] - wallHeight, wallWidth, wallHeight, false, wallImg)); // Bottom-right
+        }
+
+        // Additional Maze-like Structures (Unbreakable) and Mirrored
+        int[][] additionalMazeCoords = {
+                {600, 600}, {650, 600}, {700, 600}, {750, 600}, {800, 600},
+                {600, 650}, {600, 700}, {600, 750}, {600, 800},
+                {650, 800}, {700, 800}, {750, 800}, {800, 800},
+                {800, 750}, {800, 700}, {800, 650},
+        };
+        for (int[] coord : additionalMazeCoords) {
+            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg)); // Original
+            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - coord[0] - wallWidth, coord[1], wallWidth, wallHeight, false, wallImg)); // Mirrored horizontally
+            walls.add(new Wall(coord[0], GameConstants.GAME_WORLD_HEIGHT - coord[1] - wallHeight, wallWidth, wallHeight, false, wallImg)); // Mirrored vertically
+            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - coord[0] - wallWidth, GameConstants.GAME_WORLD_HEIGHT - coord[1] - wallHeight, wallWidth, wallHeight, false, wallImg)); // Mirrored both axes
+        }
+
+        // Symmetric Squares and Rectangles
+        int[][] squareCoords = {
+                {200, 200}, {200, 250}, {250, 200}, {250, 250},
+                {GameConstants.GAME_WORLD_WIDTH - 300, 200}, {GameConstants.GAME_WORLD_WIDTH - 300, 250},
+                {GameConstants.GAME_WORLD_WIDTH - 250, 200}, {GameConstants.GAME_WORLD_WIDTH - 250, 250},
+                {200, GameConstants.GAME_WORLD_HEIGHT - 300}, {200, GameConstants.GAME_WORLD_HEIGHT - 250},
+                {250, GameConstants.GAME_WORLD_HEIGHT - 300}, {250, GameConstants.GAME_WORLD_HEIGHT - 250},
+                {GameConstants.GAME_WORLD_WIDTH - 300, GameConstants.GAME_WORLD_HEIGHT - 300},
+                {GameConstants.GAME_WORLD_WIDTH - 300, GameConstants.GAME_WORLD_HEIGHT - 250},
+                {GameConstants.GAME_WORLD_WIDTH - 250, GameConstants.GAME_WORLD_HEIGHT - 300},
+                {GameConstants.GAME_WORLD_WIDTH - 250, GameConstants.GAME_WORLD_HEIGHT - 250},
+        };
+        for (int[] coord : squareCoords) {
+            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg));
+            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - coord[0] - wallWidth, coord[1], wallWidth, wallHeight, false, wallImg)); // Mirrored horizontally
+            walls.add(new Wall(coord[0], GameConstants.GAME_WORLD_HEIGHT - coord[1] - wallHeight, wallWidth, wallHeight, false, wallImg)); // Mirrored vertically
+            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - coord[0] - wallWidth, GameConstants.GAME_WORLD_HEIGHT - coord[1] - wallHeight, wallWidth, wallHeight, false, wallImg)); // Mirrored both axes
+        }
+
+        // Example: Maze-like area (unbreakable walls)
+        int[][] mazeCoords = {
                 {1200, 150}, {1250, 150}, {1300, 150}, {1350, 150},
                 {1200, 200}, {1350, 200},
                 {1200, 250}, {1350, 250},
@@ -1057,45 +1101,91 @@ public class GameWorld extends JPanel implements Runnable {
                 {1200, 400}, {1350, 400},
                 {1200, 450}, {1250, 450}, {1300, 450}, {1350, 450},
         };
-        for (int[] coord : adjustedMazeCoords) {
+        for (int[] coord : mazeCoords) {
             walls.add(new Wall(coord[0], coord[1], 50, 50, false, wallImg));
+            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - coord[0] - 50, coord[1], 50, 50, false, wallImg)); // Mirrored horizontally
+            walls.add(new Wall(coord[0], GameConstants.GAME_WORLD_HEIGHT - coord[1] - 50, 50, 50, false, wallImg)); // Mirrored vertically
+//            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - coord[0] - 50, GameConstants.GAME_WORLD_HEIGHT - coord[1] - 50, 50, 50, false, wallImg)); // Mirrored both axes
         }
 
-        int[][] adjustedNewMazeCoords = {
+        int[][] newMazeCoords = {
                 {1150, 550}, {1200, 550}, {1250, 550}, {1300, 550}, {1350, 550},
                 {1150, 600}, {1350, 600},
                 {1150, 650}, {1350, 650},
                 {1150, 700}, {1200, 700}, {1250, 700}, {1300, 700}, {1350, 700},
                 {1150, 750}, {1350, 750},
-                {1150, 800}, {1350, 800},
-                {1150, 850}, {1200, 850}, {1250, 850}, {1300, 850}, {1350, 850},
+                {1150, 800}, {1200, 800}, {1250, 800}, {1300, 800}, {1350, 800},
         };
-        for (int[] coord : adjustedNewMazeCoords) {
+        for (int[] coord : newMazeCoords) {
             walls.add(new Wall(coord[0], coord[1], 50, 50, false, wallImg));
+            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - coord[0] - 50, coord[1], 50, 50, false, wallImg)); // Mirrored horizontally
+            walls.add(new Wall(coord[0], GameConstants.GAME_WORLD_HEIGHT - coord[1] - 50, 50, 50, false, wallImg)); // Mirrored vertically
+//            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - coord[0] - 50, GameConstants.GAME_WORLD_HEIGHT - coord[1] - 50, 50, 50, false, wallImg)); // Mirrored both axes
         }
 
+        // Adding random unbreakable walls (ensure they're not close to powerup walls)
+        addRandomUnbreakableWalls();
+
         powerUpWalls(wallWidth, wallHeight);
-
-
     }
 
-    void powerUpWalls(int wallWidth, int wallHeight){
-        Wall breakableWall = new Wall(300, 500, wallWidth, wallHeight, true, breakableWallImg);
-        breakableWall.setDoubleDamage(true);
-        breakableWall.setPowerUpImg(doubleDamageImg);
-        walls.add(breakableWall);
+    private void addRandomUnbreakableWalls() {
+        int[][] randomWalls = {
+                {600, 200}, {850, 1000}, {450, 1400}, {800, 1250}, {1600, 1500},
+                {1750, 1100}, {1200, 850}, {300, 950}, {400, 500}, {1700, 700}
+        };
+        for (int[] coord : randomWalls) {
+            walls.add(new Wall(coord[0], coord[1], 50, 100, false, wallImg));
+            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - coord[0] - 50, coord[1], 50, 100, false, wallImg)); // Mirrored horizontally
+            walls.add(new Wall(coord[0], GameConstants.GAME_WORLD_HEIGHT - coord[1] - 100, 50, 100, false, wallImg)); // Mirrored vertically
+            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - coord[0] - 50, GameConstants.GAME_WORLD_HEIGHT - coord[1] - 100, 50, 100, false, wallImg)); // Mirrored both axes
+        }
 
-        Wall breakableWallHealth = new Wall(400, 550, wallWidth, wallHeight, true, breakableWallImg);
-        breakableWallHealth.setHealthBoost(true);
-        breakableWallHealth.setPowerUpImg(healthBoostImg);
-        walls.add(breakableWallHealth);
-
-        // Half-health power-up
-        Wall breakableWallHalfHealth = new Wall(500, 600, wallWidth, wallHeight, true, breakableWallImg);
-        breakableWallHalfHealth.setHalfHealth(true);
-        breakableWallHalfHealth.setPowerUpImg(halfHealthImg);
-        walls.add(breakableWallHalfHealth);
+        int[][] utahShapeCoords = {
+                {950, 400}, {1000, 400}, {1050, 400}, {950, 450}, {1050, 450}, {950, 500}, {1050, 500}
+        };
+        for (int[] coord : utahShapeCoords) {
+            walls.add(new Wall(coord[0], coord[1], 50, 50, false, wallImg));
+            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - coord[0] - 50, coord[1], 50, 50, false, wallImg)); // Mirrored horizontally
+            walls.add(new Wall(coord[0], GameConstants.GAME_WORLD_HEIGHT - coord[1] - 50, 50, 50, false, wallImg)); // Mirrored vertically
+            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - coord[0] - 50, GameConstants.GAME_WORLD_HEIGHT - coord[1] - 50, 50, 50, false, wallImg)); // Mirrored both axes
+        }
     }
+
+
+    void powerUpWalls(int wallWidth, int wallHeight) {
+        // Six power-ups placed symmetrically
+        Wall breakableWall1 = new Wall(GameConstants.GAME_WORLD_WIDTH / 2 - 200, GameConstants.GAME_WORLD_HEIGHT / 2, wallWidth, wallHeight, true, breakableWallImg);
+        breakableWall1.setDoubleDamage(true);
+        breakableWall1.setPowerUpImg(doubleDamageImg);
+        walls.add(breakableWall1);
+
+        Wall breakableWall2 = new Wall(GameConstants.GAME_WORLD_WIDTH / 2 + 200, GameConstants.GAME_WORLD_HEIGHT / 2, wallWidth, wallHeight, true, breakableWallImg);
+        breakableWall2.setHealthBoost(true);
+        breakableWall2.setPowerUpImg(healthBoostImg);
+        walls.add(breakableWall2);
+
+        Wall breakableWall3 = new Wall(GameConstants.GAME_WORLD_WIDTH / 2, GameConstants.GAME_WORLD_HEIGHT / 2 - 200, wallWidth, wallHeight, true, breakableWallImg);
+        breakableWall3.setHalfHealth(true);
+        breakableWall3.setPowerUpImg(halfHealthImg);
+        walls.add(breakableWall3);
+
+//        Wall breakableWall4 = new Wall(GameConstants.GAME_WORLD_WIDTH / 2, GameConstants.GAME_WORLD_HEIGHT / 2 + 200, wallWidth, wallHeight, true, breakableWallImg);
+//        breakableWall4.setDoubleDamage(true);
+//        breakableWall4.setPowerUpImg(doubleDamageImg);
+//        walls.add(breakableWall4);
+//
+//        Wall breakableWall5 = new Wall(GameConstants.GAME_WORLD_WIDTH / 2 + 400, GameConstants.GAME_WORLD_HEIGHT / 2 + 400, wallWidth, wallHeight, true, breakableWallImg);
+//        breakableWall5.setHealthBoost(true);
+//        breakableWall5.setPowerUpImg(healthBoostImg);
+//        walls.add(breakableWall5);
+//
+//        Wall breakableWall6 = new Wall(GameConstants.GAME_WORLD_WIDTH / 2 - 400, GameConstants.GAME_WORLD_HEIGHT / 2 - 400, wallWidth, wallHeight, true, breakableWallImg);
+//        breakableWall6.setHalfHealth(true);
+//        breakableWall6.setPowerUpImg(halfHealthImg);
+//        walls.add(breakableWall6);
+    }
+
 
 
 }

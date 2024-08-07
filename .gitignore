@@ -1,6 +1,7 @@
 .idea/
 out/
 nbproject/
+META-INF/
 .metadata
 bin/
 tmp/
