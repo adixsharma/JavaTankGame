@@ -39,7 +39,7 @@ public class Tank{
     private BufferedImage bulletImg; // Image for the bullet
 
 
-
+    // Constructor for each tank object sets some default values
     public Tank(float x, float y, float vx, float vy, float angle, BufferedImage img, BufferedImage bulletImg) {
         this.x = x;
         this.y = y;
@@ -51,10 +51,12 @@ public class Tank{
         this.bullets = new ArrayList<>();
         this.health = 100;
         this.lives = 3;
-        this.isDoubleDamage = false;
-        this.isHealthBoost = false;
-        this.isHalfHealth = false;
+        this.isDoubleDamage = false; // power up
+        this.isHealthBoost = false; // power up
+        this.isHalfHealth = false; // power up
     }
+
+    // Getters and Setters
 
     void setX(float x){ this.x = x; }
 

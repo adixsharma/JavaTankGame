@@ -12,7 +12,7 @@ public class EndGamePanel extends JPanel {
 
     private BufferedImage menuBackground;
     private final Launcher lf;
-    private String winnerMessage = "";
+    private String winnerMessage = ""; // used to show who the winning player is
 
     public EndGamePanel(Launcher lf) {
         this.lf = lf;
@@ -58,6 +58,7 @@ public class EndGamePanel extends JPanel {
 
     }
 
+    // used to set the msg to show who the winner is after the game ends
     public void setWinnerMessage(String winnerMessage) {
         this.winnerMessage = winnerMessage;
     }

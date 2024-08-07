@@ -12,9 +12,10 @@ public class Bullet {
     private float vx;
     private float vy;
     private float angle;
-    private BufferedImage img;
-    private boolean destroyed;
+    private BufferedImage img; // Image for the bullet
+    private boolean destroyed; // Indicates if the bullet has been destroyed
 
+    // Constructor for each bullet object sets some default values
     public Bullet(float x, float y, float angle, BufferedImage img) {
         this.x = x;
         this.y = y;
@@ -30,16 +31,7 @@ public class Bullet {
         y += vy;
     }
 
-
-
-
-    public void drawImage(Graphics g) {
-        AffineTransform rotation = AffineTransform.getTranslateInstance(x, y);
-        rotation.rotate(Math.toRadians(angle), this.img.getWidth() / 2.0, this.img.getHeight() / 2.0);
-        Graphics2D g2d = (Graphics2D) g;
-        g2d.drawImage(this.img, rotation, null);
-    }
-
+    // Getters and Setters
     public Rectangle getBounds() {
         return new Rectangle((int) x, (int) y, img.getWidth(), img.getHeight());
     }
@@ -51,4 +43,15 @@ public class Bullet {
     public void setDestroyed(boolean destroyed) {
         this.destroyed = destroyed;
     }
+
+
+    // Draw the bullet on the screen
+    public void drawImage(Graphics g) {
+        AffineTransform rotation = AffineTransform.getTranslateInstance(x, y);
+        rotation.rotate(Math.toRadians(angle), this.img.getWidth() / 2.0, this.img.getHeight() / 2.0);
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.drawImage(this.img, rotation, null);
+    }
+
+
 }

@@ -20,12 +20,14 @@ import java.util.ArrayList;
 
 
 /**
+ * @author Aditya Sharma
  * @author anthony-pc
  */
 public class GameWorld extends JPanel implements Runnable {
 
     private BufferedImage world;
 
+    // Each tank object (t1: player 1 and t2: player 2)
     private Tank t1;
     private Tank t2;
 
@@ -34,31 +36,33 @@ public class GameWorld extends JPanel implements Runnable {
 
     private BufferedImage background;
 
-    private List<Wall> walls;
-    private BufferedImage wallImg;
-    private BufferedImage breakableWallImg;
+    private List<Wall> walls;                // all walls in the game both breakable and unbreakable
+    private BufferedImage wallImg;          // unbreakable wall image
+    private BufferedImage breakableWallImg; // breakable wall image
 
-    private BufferedImage bulletImg;
-    private BufferedImage heartImg;
+    private BufferedImage bulletImg;    // bullet image
+    private BufferedImage heartImg;    // heart image for lives
 
-    private BufferedImage doubleDamageImg;
-    private BufferedImage healthBoostImg;
-    private BufferedImage halfHealthImg;
+    private BufferedImage doubleDamageImg;  // Power up image for 2x damage
+    private BufferedImage healthBoostImg;   // Power up image for health boost
+    private BufferedImage halfHealthImg;    // Power up image for half health
 
-    private Clip powerDownPickupClip;
-    private Clip powerUpPickupClip;
-    private Clip tankDeathClip;
-    private Clip tankLifeDownClip;
+    private Clip powerDownPickupClip;   // Sound clip for power down pickup
+    private Clip powerUpPickupClip;     // Sound clip for power up pickup
+    private Clip tankDeathClip;         // Sound clip for tank death at the end of the game
+    private Clip tankLifeDownClip;      // Sound clip for tank life down (3 lives total)
 
-    private Clip backgroundMusicClip;
-    private Clip bulletHitTankClip;
+    private Clip backgroundMusicClip;   // Background music clip
+    private Clip bulletHitTankClip;     // Sound clip for bullet hitting tank
 
-    private BufferedImage[] animationImages;
+    private BufferedImage[] animationImages;    // Array of images for current animation
 
-    private BufferedImage[] explosionImages;
-    private BufferedImage[] powerUpImages;
-    private BufferedImage[] powerDownImages;
+    // Array of images for each of the 3 animations that are passed to animation method
+    private BufferedImage[] explosionImages;    // Array of images for explosion animation upon life lost
+    private BufferedImage[] powerUpImages;      // Array of images for power up animation when tank hits power up
+    private BufferedImage[] powerDownImages;    // Array of images for power down animation when tank hits power down
 
+    // Global variables for animation handling
     private int currentAnimationFrame = 0;
     private long lastAnimationTime = 0;
     private boolean isAnimating = false;
@@ -66,9 +70,7 @@ public class GameWorld extends JPanel implements Runnable {
     private int animationY = 0;
 
 
-    /**
-     *
-     */
+    // Constructor for the GameWorld class
     public GameWorld(Launcher lf) {
         this.lf = lf;
     }
@@ -82,17 +84,10 @@ public class GameWorld extends JPanel implements Runnable {
                 this.t2.update(this.t1); // update tank
                 this.update();
 
-
-//                for (ExplosionAnimation explosion : activeExplosionsT1) {
-//                    explosion.update();
-//                }
-//                for (ExplosionAnimation explosion : activeExplosionsT2) {
-//                    explosion.update();
-//                }
                 this.repaint();   // redraw game
                 /*
-                 * Sleep for 1000/144 ms (~6.9ms). This is done to have our 
-                 * loop run at a fixed rate per/sec. 
+                 * Sleep for 1000/144 ms (~6.9ms). This is done to have our
+                 * loop run at a fixed rate per/sec.
                 */
                 Thread.sleep(1000 / 144);
             }
@@ -272,6 +267,7 @@ public class GameWorld extends JPanel implements Runnable {
             throw new RuntimeException(e);
         }
 
+        // set initial position and characteristics of each tank player
         t1 = new Tank(300, 300, 0, 0, (short) 0, t1img, bulletImg);
         t1.setR(2); // Set the speed of t1
         t1.setROTATIONSPEED(1.0f); // Set the rotation speed of t1
@@ -284,11 +280,12 @@ public class GameWorld extends JPanel implements Runnable {
         TankControl tc2 = new TankControl(t2, KeyEvent.VK_I, KeyEvent.VK_K, KeyEvent.VK_J, KeyEvent.VK_L, KeyEvent.VK_N);
         this.lf.getJf().addKeyListener(tc2);
 
-        generateWalls();
-        playBackgroundMusic();
+        generateWalls();        // generates all walls for game map
+        playBackgroundMusic();  // start to play background music
 
     }
 
+    // used to resize any image I need to my needs
     private BufferedImage resizeImage(BufferedImage originalImage, int targetWidth, int targetHeight) {
         Image resultingImage = originalImage.getScaledInstance(targetWidth, targetHeight, Image.SCALE_SMOOTH);
         BufferedImage outputImage = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_ARGB);
@@ -298,6 +295,7 @@ public class GameWorld extends JPanel implements Runnable {
         return outputImage;
     }
 
+    // Resets animation global variables to default values and sets current animation images
     public void startAnimation(int x, int y, BufferedImage[] imgArray) {
         this.animationX = x;
         this.animationY = y;
@@ -308,6 +306,12 @@ public class GameWorld extends JPanel implements Runnable {
 
     }
 
+    /**
+     * Draws an animation on the screen.
+     *
+     * @param g the Graphics object used for drawing
+     * @param animationImages an array of BufferedImages representing the frames of the animation
+     */
     public void drawAnimation(Graphics g, BufferedImage[] animationImages) {
         if (isAnimating) {
             long currentTime = System.currentTimeMillis();
@@ -324,7 +328,11 @@ public class GameWorld extends JPanel implements Runnable {
         }
     }
 
-
+    /**
+     * Paints the game components on the screen.
+     *
+     * @param g the Graphics object used for drawing
+     */
     @Override
     public void paintComponent(Graphics g) {
         Graphics2D g2 = (Graphics2D) g;
@@ -375,14 +383,6 @@ public class GameWorld extends JPanel implements Runnable {
         int t2CameraX = Math.max(0, Math.min((int) t2.getX() - splitScreenWidth / 2, GameConstants.GAME_WORLD_WIDTH - splitScreenWidth));
         int t2CameraY = Math.max(0, Math.min((int) t2.getY() - splitScreenHeight / 2, GameConstants.GAME_WORLD_HEIGHT - splitScreenHeight));
 
-//        for (ExplosionAnimation explosion : activeExplosionsT1) {
-//            explosion.render(g2, explosion.getX(), explosion.getY()); // Provide x and y coordinates for each explosion
-//        }
-//        for (ExplosionAnimation explosion : activeExplosionsT2) {
-//            explosion.render(g2, explosion.getX(), explosion.getY()); // Provide x and y coordinates for each explosion
-//        }
-
-
         // Draw the left half (for t1)
         g2.drawImage(world.getSubimage(t1CameraX, t1CameraY, splitScreenWidth, splitScreenHeight), 0, 0, null);
 
@@ -398,12 +398,6 @@ public class GameWorld extends JPanel implements Runnable {
         g2.fillRect(0, 0, GameConstants.GAME_SCREEN_WIDTH, GameConstants.UI_PANEL_HEIGHT);
 
         // Draw Player 1's health bar and lives
-//        drawPlayerInfo(g2, t1, 50, 10);
-//
-//        // Draw Player 2's health bar and lives
-//        drawPlayerInfo(g2, t2, GameConstants.GAME_SCREEN_WIDTH - 300, 10);
-
-        // Draw Player 1's health bar and lives
         drawPlayerInfo(g2, t1, 40, 10, "Player 1", true);
 
         // Draw Player 2's health bar and lives
@@ -412,58 +406,41 @@ public class GameWorld extends JPanel implements Runnable {
         // Draw the mini-map
         drawMiniMap(g2);
 
-        //draw explosion at x,y
+        //draw animation
         drawAnimation(g, animationImages);
 
-
-//        for (ExplosionAnimation explosion : activeExplosionsT1) {
-//            explosion.render(g2, (int) t1.getX(), (int) t1.getY()); // Provide x and y coordinates for each explosion
-//        }
-//
-//        for (ExplosionAnimation explosion : activeExplosionsT2) {
-//            explosion.render(g2, (int) t2.getX(), (int) t2.getY()); // Provide x and y coordinates for each explosion
-//        }
     }
 
-//    private void drawPlayerInfo(Graphics2D g, Tank tank, int x, int y) {
-//        // Draw health bar background
-//        g.setColor(Color.RED);
-//        g.fillRect(x, y, GameConstants.HEALTH_BAR_WIDTH, GameConstants.HEALTH_BAR_HEIGHT);
-//
-//        // Draw current health
-//        g.setColor(Color.GREEN);
-//        int healthWidth = (int) (tank.getHealth() / 100.0 * GameConstants.HEALTH_BAR_WIDTH);
-//        g.fillRect(x, y, healthWidth, GameConstants.HEALTH_BAR_HEIGHT);
-//
-//        // Draw health bar border
-//        g.setColor(Color.BLACK);
-//        g.drawRect(x, y, GameConstants.HEALTH_BAR_WIDTH, GameConstants.HEALTH_BAR_HEIGHT);
-//
-//        // Draw lives (heart icons)
-//        for (int i = 0; i < tank.getLives(); i++) {
-//            int heartX = x + GameConstants.HEALTH_BAR_WIDTH + 10 + i * (GameConstants.LIVES_ICON_SIZE + 5);
-//            int heartY = y;
-//            g.drawImage(heartImg, heartX, heartY, GameConstants.LIVES_ICON_SIZE, GameConstants.LIVES_ICON_SIZE, null);
-//        }
-//
-//        // Optionally, draw the number of lives left
-////        g.setColor(Color.WHITE);
-////        g.drawString("Lives: " + tank.getLives(), x + GameConstants.HEALTH_BAR_WIDTH + 60, y + 15);
-//    }
-
+    /**
+     * Plays the background music in a continuous loop.
+     *
+     * This method checks if the background music clip is not null and, if so,
+     * starts playing the music in a continuous loop.
+     */
     private void playBackgroundMusic() {
         if (backgroundMusicClip != null) {
             backgroundMusicClip.loop(Clip.LOOP_CONTINUOUSLY); // Loop the music continuously
         }
     }
 
+    // Stop the background music, if needed
     private void stopBackgroundMusic() {
         if (backgroundMusicClip != null && backgroundMusicClip.isRunning()) {
             backgroundMusicClip.stop();
         }
     }
 
-
+    /**
+    * Draws the player's information, including lives and health bar, on the screen.
+    *
+    * @param g the Graphics2D object used for drawing
+    * @param tank the Tank object representing the player
+    * @param x the x-coordinate for drawing the player's information
+    * @param y the y-coordinate for drawing the player's information
+    * @param playerLabel the label for the player (e.g., "Player 1" or "Player 2")
+    * @param isPlayer1 a boolean indicating if the player is Player 1 (true) or Player 2 (false)
+    *
+    */
     private void drawPlayerInfo(Graphics2D g, Tank tank, int x, int y, String playerLabel, boolean isPlayer1) {
         // Draw lives (heart icons)
         for (int i = 0; i < tank.getLives(); i++) {
@@ -493,10 +470,14 @@ public class GameWorld extends JPanel implements Runnable {
         g.drawString(playerLabel, labelX, y + GameConstants.HEALTH_BAR_HEIGHT);
     }
 
-
+    /**
+     * Draws the mini-map on the screen.
+     *
+     * Purpose: The mini-map is a smaller version of the game world that shows the entire game world in a smaller scale.
+     */
     private void drawMiniMap(Graphics2D g) {
         int miniMapX = (GameConstants.GAME_SCREEN_WIDTH / 2) - (GameConstants.MINI_MAP_WIDTH / 2);
-        int miniMapY = 10; // Just an example, adjust as necessary
+        int miniMapY = 10;
 
         // Calculate scale factors for the mini-map
         float scaleX = (float) GameConstants.MINI_MAP_WIDTH / GameConstants.GAME_WORLD_WIDTH;
@@ -519,7 +500,17 @@ public class GameWorld extends JPanel implements Runnable {
     }
 
 
-    // Collision handling method
+    /**
+     * Handles the collision between a tank and a wall.
+     *
+     * This method checks if the bounding boxes of the tank and the wall intersect.
+     * If they do, it calculates the overlap on both the x and y axes to determine
+     * the side of the wall the tank is colliding with. The collision is then resolved
+     * by adjusting the tank's position based on the smaller overlap.
+     *
+     * @param tank the Tank object that is colliding with the wall
+     * @param wall the Wall object that the tank is colliding with
+     */
     public void handleTankWallCollision(Tank tank, Wall wall) {
         // Get the bounding boxes of the tank and wall
         Rectangle tankRect = new Rectangle((int) tank.getX(), (int) tank.getY(), tank.getImg().getWidth(), tank.getImg().getHeight());
@@ -571,7 +562,17 @@ public class GameWorld extends JPanel implements Runnable {
     }
 
 
-
+    /**
+     * Handles the collision between two tanks.
+     *
+     * This method checks if the bounding boxes of the two tanks intersect.
+     * If they do, it calculates the overlap on both the x and y axes to determine
+     * the side of the collision. The collision is then resolved by adjusting the
+     * positions of the tanks based on the smaller overlap.
+     *
+     * @param tank1 the first Tank object involved in the collision
+     * @param tank2 the second Tank object involved in the collision
+     */
     public void handleTankCollision(Tank tank1, Tank tank2) {
         Rectangle tank1Rect = new Rectangle((int) tank1.getX(), (int) tank1.getY(), tank1.getImg().getWidth(), tank1.getImg().getHeight());
         Rectangle tank2Rect = new Rectangle((int) tank2.getX(), (int) tank2.getY(), tank2.getImg().getWidth(), tank2.getImg().getHeight());
@@ -638,7 +639,14 @@ public class GameWorld extends JPanel implements Runnable {
         }
     }
 
-
+    /**
+     * Plays the given audio clip from the beginning.
+     *
+     * This method checks if the provided audio clip is not null. If the clip is valid,
+     * it rewinds the clip to the beginning and starts playing it.
+     *
+     * @param clip the Clip object representing the audio clip to be played
+     */
     private void playSound(Clip clip) {
         if (clip != null) {
             clip.setFramePosition(0); // Rewind to the beginning
@@ -646,7 +654,16 @@ public class GameWorld extends JPanel implements Runnable {
         }
     }
 
-
+    /**
+     * Checks for collisions between the tank and power-ups.
+     *
+     * This method iterates through all walls in the game and checks if any destroyed wall
+     * has a visible power-up. If the tank intersects with the power-up, the corresponding
+     * power-up effect is applied to the tank, the power-up is removed from the map, and
+     * an animation is started.
+     *
+     * @param tank the Tank object to check for power-up collisions
+     */
     private void checkPowerUpCollisions(Tank tank) {
         for (Wall wall : walls) {
             if (wall.isDestroyed() && wall.isPowerUpVisible()) {
@@ -683,7 +700,22 @@ public class GameWorld extends JPanel implements Runnable {
         }
     }
 
-
+    /**
+     * Handles collisions between bullets and other game objects.
+     *
+     * This method iterates through all bullets fired by both tanks and checks for collisions
+     * with walls and the opposing tank.
+     *
+     * If a bullet collides with a wall, the bullet is removed
+     * and the wall is marked as destroyed if it is destructible.
+     *
+     * If a bullet collides with the opposing tank, the bullet is removed, the tank's health is reduced, and appropriate
+     * sound effects are played.
+     *
+     * If a tank's health drops to zero, the tank loses a life and an explosion animation is triggered.
+     *
+     * If a tank loses all its lives, the game ends.
+     */
     public void handleBulletCollisions() {
         List<Bullet> bulletsToRemove = new ArrayList<>();
 
@@ -694,10 +726,8 @@ public class GameWorld extends JPanel implements Runnable {
                         bulletsToRemove.add(bullet);
                         if (wall.isDestructible()) {
                             wall.setDestroyed(true);
+                            // Set power-up image and make it visible if applicable
                             if (wall.isDoubleDamage()){
-                                //write code for draw powerup img on gameboard
-                                // if collision detected set isDoubleDamage for tank object to be true with the checkPowerUpCollisions method
-//                                   once the collision occurs remove the drawn image of the powerup
                                 wall.setPowerUpImg(doubleDamageImg); // Set the power-up image
                                 wall.setPowerUpVisible(true); // Make the power-up visible
                             }
@@ -714,18 +744,20 @@ public class GameWorld extends JPanel implements Runnable {
                         break;
                     }
                 }
+                // Check for bullet collision with the opposing tank
                 if (bullet.getBounds().intersects(t2.getBounds())) {
                     bulletsToRemove.add(bullet);
                     playSound(bulletHitTankClip);
 
                     if (t1.isDoubleDamage()){
-                        t2.reduceHealth(40); // Reduce health by 40 for powerup
+                        t2.reduceHealth(40); // Reduce health by 40 if powerUp Active
                     }else {
                         t2.reduceHealth(20); // Reduce health by 20
                     }
 
 
-
+                    // upon health reaching 0, tank loses a life and is reset to starting position
+                    // also triggers an explosion animation
                     if (t2.getHealth() <= 0) {
 
                         int lifeCount = t2.getLives() - 1;
@@ -736,30 +768,28 @@ public class GameWorld extends JPanel implements Runnable {
                         } else {
                             playSound(tankLifeDownClip);
                         }
-//                        activeExplosions.add(new ExplosionAnimation(explosionImages, 100));
-
+                        // if all lives are lost game is over and winner is declared
                         if (t2.getLives() <= 0){
-                            showEndGameScreen("Player 1 Wins!");
+                            showEndGameScreen("Player 1 Wins!"); // end game screen set
 //                            lf.setFrame("end"); // Trigger end game
 //                            resetGame();
 //                            System.out.println("Player 1 wins!");
                         }
 
+                        // reset tank position and health
                         this.t2.setX(1650);
                         this.t2.setY(1650);
                         this.t2.setHealth(100);
                         this.t2.setAngle((short) 0);
                         this.t2.setDoubleDamage(false);
-                        startAnimation(1125, 625, explosionImages); // animation for death
-
-
-
+                        startAnimation(1125, 625, explosionImages); // animation for life lost
                     }
                 }
             }
         }
-        t1.getBullets().removeAll(bulletsToRemove);
+        t1.getBullets().removeAll(bulletsToRemove); // Remove bullets that have collided
 
+        // same for the other tank
         for (Bullet bullet : t2.getBullets()) {
             if (!bullet.isDestroyed()) {
                 for (Wall wall : walls) {
@@ -795,7 +825,7 @@ public class GameWorld extends JPanel implements Runnable {
                     }
 
 
-
+                    // if health reaches 0, tank loses a life and is reset to starting position
                     if (t1.getHealth() <= 0) {
 
                         int lifeCount = t1.getLives() - 1;
@@ -807,9 +837,8 @@ public class GameWorld extends JPanel implements Runnable {
                             playSound(tankLifeDownClip);
                         }
 
-
                         if (t1.getLives() <= 0) {
-                            showEndGameScreen("Player 2 Wins!");
+                            showEndGameScreen("Player 2 Wins!"); // end game screen set
 //                            lf.setFrame("end"); // Trigger end game
 //                            resetGame();
 //                            System.out.println("Player 2 wins!");
@@ -831,6 +860,12 @@ public class GameWorld extends JPanel implements Runnable {
 
     }
 
+    /**
+     * Resets the game to its initial state.
+     *
+     * This method resets the positions, health, and power-up status of both tanks.
+     * It also resets the walls to their initial state and generates new power-ups.
+     */
     private void showEndGameScreen(String winnerMessage) {
         // Update end game panel with winner message
         EndGamePanel endGamePanel = (EndGamePanel) lf.getMainPanel().getComponent(2); // Assuming end game panel is at index 2
@@ -842,6 +877,13 @@ public class GameWorld extends JPanel implements Runnable {
     }
 
 
+    /**
+     * Updates the game state.
+     *
+     * This method updates the positions and states of both tanks, checks for collisions with walls,
+     * handles bullet collisions, handles tank collisions, and checks for power-up collisions.
+     * It is called repeatedly to keep the game running and ensure all game elements are updated.
+     */
     public void update() {
         t1.update(t2); // Update tank position
         t2.update(t1); // Update tank position
@@ -857,163 +899,22 @@ public class GameWorld extends JPanel implements Runnable {
                 }
             }
         }
-        handleBulletCollisions();
-        handleTankCollision(t1, t2);
 
-        checkPowerUpCollisions(t1);
-        checkPowerUpCollisions(t2);
+        handleBulletCollisions();   // Check for bullet collisions
+        handleTankCollision(t1, t2); // Check for tank collisions
+
+        checkPowerUpCollisions(t1); // Check for power-up activation collision t1
+        checkPowerUpCollisions(t2); // Check for power-up activation collision t2
 
     }
 
-//    private void generateWalls() {
-//        walls = new ArrayList<>();
-//
-//        // Define wall dimensions
-//        int wallWidth = 50;
-//        int wallHeight = 50;
-//
-//        // Unbreakable Border Walls
-//        for (int x = 0; x <= GameConstants.GAME_WORLD_WIDTH - wallWidth; x += wallWidth) {
-//            walls.add(new Wall(x, 0, wallWidth, wallHeight, false, wallImg)); // Top border
-//            walls.add(new Wall(x, GameConstants.GAME_WORLD_HEIGHT - wallHeight, wallWidth, wallHeight, false, wallImg)); // Bottom border
-//        }
-//        for (int y = 0; y <= GameConstants.GAME_WORLD_HEIGHT - wallHeight; y += wallHeight) {
-//            walls.add(new Wall(0, y, wallWidth, wallHeight, false, wallImg)); // Left border
-//            walls.add(new Wall(GameConstants.GAME_WORLD_WIDTH - wallWidth, y, wallWidth, wallHeight, false, wallImg)); // Right border
-//        }
-//
-//        // Central Horizontal Line (Breakable Walls)
-//        int centerY = GameConstants.GAME_WORLD_HEIGHT / 2;
-//        for (int x = wallWidth * 2; x <= GameConstants.GAME_WORLD_WIDTH - wallWidth * 2; x += wallWidth) {
-////            walls.add(new Wall(x, centerY - 50, wallWidth, wallHeight, true, breakableWallImg));
-//            walls.add(new Wall(x, centerY, wallWidth, wallHeight, true, breakableWallImg));
-//            walls.add(new Wall(x, centerY  + 50, wallWidth, wallHeight, true, breakableWallImg));
-//        }
-//
-//        // Central Vertical Line (Breakable Walls)
-//        int centerX = GameConstants.GAME_WORLD_WIDTH / 2;
-//        for (int y = 0; y < GameConstants.GAME_WORLD_HEIGHT; y += wallHeight) {
-////            walls.add(new Wall(centerX - 50, centerY, wallWidth, wallHeight, true, breakableWallImg));
-//            walls.add(new Wall(centerX, y, wallWidth, wallHeight, true, breakableWallImg));
-////            walls.add(new Wall(centerX + 50, centerY, wallWidth, wallHeight, true, breakableWallImg));
-//        }
-//
-//        // Symmetric Square and Rectangular Structures (Unbreakable)
-//        int[][] symmetricalCoords = {
-//                // Top-left
-//                {100, 100}, {150, 100}, {200, 100}, {250, 100}, {300, 100}, {350, 100},
-//                {100, 150}, {100, 200}, {100, 250}, {100, 300}, {100, 350},
-//                {150, 350}, {200, 350}, {250, 350}, {300, 350}, {350, 350},
-//                // Top-right
-//                {GameConstants.GAME_WORLD_WIDTH - 100, 100}, {GameConstants.GAME_WORLD_WIDTH - 150, 100},
-//                {GameConstants.GAME_WORLD_WIDTH - 200, 100}, {GameConstants.GAME_WORLD_WIDTH - 250, 100},
-//                {GameConstants.GAME_WORLD_WIDTH - 300, 100}, {GameConstants.GAME_WORLD_WIDTH - 350, 100},
-//                {GameConstants.GAME_WORLD_WIDTH - 100, 150}, {GameConstants.GAME_WORLD_WIDTH - 100, 200},
-//                {GameConstants.GAME_WORLD_WIDTH - 100, 250}, {GameConstants.GAME_WORLD_WIDTH - 100, 300},
-//                {GameConstants.GAME_WORLD_WIDTH - 100, 350}, {GameConstants.GAME_WORLD_WIDTH - 150, 350},
-//                {GameConstants.GAME_WORLD_WIDTH - 200, 350}, {GameConstants.GAME_WORLD_WIDTH - 250, 350},
-//                {GameConstants.GAME_WORLD_WIDTH - 300, 350}, {GameConstants.GAME_WORLD_WIDTH - 350, 350},
-//        };
-//        for (int[] coord : symmetricalCoords) {
-//            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg));
-//        }
-//
-//        // Additional Maze-like Structures (Unbreakable)
-//        int[][] additionalMazeCoords = {
-//                {600, 600}, {650, 600}, {700, 600}, {750, 600}, {800, 600},
-//                {600, 650}, {600, 700}, {600, 750}, {600, 800},
-//                {650, 800}, {700, 800}, {750, 800}, {800, 800},
-//                {800, 750}, {800, 700}, {800, 650},
-//                // Symmetrical right side
-//                {GameConstants.GAME_WORLD_WIDTH - 600, 600}, {GameConstants.GAME_WORLD_WIDTH - 650, 600},
-//                {GameConstants.GAME_WORLD_WIDTH - 700, 600}, {GameConstants.GAME_WORLD_WIDTH - 750, 600},
-//                {GameConstants.GAME_WORLD_WIDTH - 800, 600}, {GameConstants.GAME_WORLD_WIDTH - 600, 650},
-//                {GameConstants.GAME_WORLD_WIDTH - 600, 700}, {GameConstants.GAME_WORLD_WIDTH - 600, 750},
-//                {GameConstants.GAME_WORLD_WIDTH - 600, 800}, {GameConstants.GAME_WORLD_WIDTH - 650, 800},
-//                {GameConstants.GAME_WORLD_WIDTH - 700, 800}, {GameConstants.GAME_WORLD_WIDTH - 750, 800},
-//                {GameConstants.GAME_WORLD_WIDTH - 800, 800}, {GameConstants.GAME_WORLD_WIDTH - 800, 750},
-//                {GameConstants.GAME_WORLD_WIDTH - 800, 700}, {GameConstants.GAME_WORLD_WIDTH - 800, 650},
-//        };
-//        for (int[] coord : additionalMazeCoords) {
-//            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg));
-//        }
-//
-//        // Symmetric Squares and Rectangles
-//        int[][] squareCoords = {
-//                {200, 200}, {200, 250}, {250, 200}, {250, 250},
-//                {GameConstants.GAME_WORLD_WIDTH - 300, 200}, {GameConstants.GAME_WORLD_WIDTH - 300, 250},
-//                {GameConstants.GAME_WORLD_WIDTH - 250, 200}, {GameConstants.GAME_WORLD_WIDTH - 250, 250},
-//                {200, GameConstants.GAME_WORLD_HEIGHT - 300}, {200, GameConstants.GAME_WORLD_HEIGHT - 250},
-//                {250, GameConstants.GAME_WORLD_HEIGHT - 300}, {250, GameConstants.GAME_WORLD_HEIGHT - 250},
-//                {GameConstants.GAME_WORLD_WIDTH - 300, GameConstants.GAME_WORLD_HEIGHT - 300},
-//                {GameConstants.GAME_WORLD_WIDTH - 300, GameConstants.GAME_WORLD_HEIGHT - 250},
-//                {GameConstants.GAME_WORLD_WIDTH - 250, GameConstants.GAME_WORLD_HEIGHT - 300},
-//                {GameConstants.GAME_WORLD_WIDTH - 250, GameConstants.GAME_WORLD_HEIGHT - 250},
-//        };
-//        for (int[] coord : squareCoords) {
-//            walls.add(new Wall(coord[0], coord[1], wallWidth, wallHeight, false, wallImg));
-//        }
-//
-////        Example: Maze-like area (unbreakable walls)
-//        int[][] mazeCoords = {
-//                {1200, 150}, {1250, 150}, {1300, 150}, {1350, 150},
-//                {1200, 200}, {1350, 200},
-//                {1200, 250}, {1350, 250},
-//                {1200, 300}, {1250, 300}, {1300, 300}, {1350, 300},
-//                {1200, 350}, {1350, 350},
-//                {1200, 400}, {1350, 400},
-//                {1200, 450}, {1250, 450}, {1300, 450}, {1350, 450},
-//        };
-//        for (int[] coord : mazeCoords) {
-//            walls.add(new Wall(coord[0], coord[1], 50, 50, false, wallImg));
-//        }
-//
-//        int[][] newMazeCoords = {
-//                {1150, 550}, {1200, 550}, {1250, 550}, {1300, 550}, {1350, 550},
-//                {1150, 600}, {1350, 600},
-//                {1150, 650}, {1350, 650},
-//                {1150, 700}, {1200, 700}, {1250, 700}, {1300, 700}, {1350, 700},
-//                {1150, 750}, {1350, 750},
-//                {1150, 800}, {1350, 800},
-//                {1150, 850}, {1200, 850}, {1250, 850}, {1300, 850}, {1350, 850},
-//        };
-//        for (int[] coord : newMazeCoords) {
-//            walls.add(new Wall(coord[0], coord[1], 50, 50, false, wallImg));
-//        }
-//
-//        int[][] adjustedMazeCoords = {
-//                {1200, 150}, {1250, 150}, {1300, 150}, {1350, 150},
-//                {1200, 200}, {1350, 200},
-//                {1200, 250}, {1350, 250},
-//                {1200, 300}, {1250, 300}, {1300, 300}, {1350, 300},
-//                {1200, 350}, {1350, 350},
-//                {1200, 400}, {1350, 400},
-//                {1200, 450}, {1250, 450}, {1300, 450}, {1350, 450},
-//        };
-//        for (int[] coord : adjustedMazeCoords) {
-//            walls.add(new Wall(coord[0], coord[1], 50, 50, false, wallImg));
-//        }
-//
-//        int[][] adjustedNewMazeCoords = {
-//                {1150, 550}, {1200, 550}, {1250, 550}, {1300, 550}, {1350, 550},
-//                {1150, 600}, {1350, 600},
-//                {1150, 650}, {1350, 650},
-//                {1150, 700}, {1200, 700}, {1250, 700}, {1300, 700}, {1350, 700},
-//                {1150, 750}, {1350, 750},
-//                {1150, 800}, {1350, 800},
-//                {1150, 850}, {1200, 850}, {1250, 850}, {1300, 850}, {1350, 850},
-//        };
-//        for (int[] coord : adjustedNewMazeCoords) {
-//            walls.add(new Wall(coord[0], coord[1], 50, 50, false, wallImg));
-//        }
-//
-//
-//
-//
-//
-//        powerUpWalls(wallWidth, wallHeight);
-//    }
-
+    /**
+     * Generates the walls for the game map.
+     *
+     * This method initializes the list of walls and adds both unbreakable and breakable walls
+     * to the game map. It creates a border of unbreakable walls around the game world and a central
+     * horizontal line of breakable walls.
+     */
     private void generateWalls() {
         walls = new ArrayList<>();
 
@@ -1129,6 +1030,12 @@ public class GameWorld extends JPanel implements Runnable {
         powerUpWalls(wallWidth, wallHeight);
     }
 
+    /**
+     * Adds more unbreakable walls to the game map.
+     *
+     * This method adds a predefined set of unbreakable walls to the game map at specific coordinates.
+     * Each wall is mirrored horizontally, vertically, and both axes to ensure symmetry in the game world.
+     */
     private void addRandomUnbreakableWalls() {
         int[][] randomWalls = {
                 {600, 200}, {850, 1000}, {450, 1400}, {800, 1250}, {1600, 1500},
@@ -1152,38 +1059,37 @@ public class GameWorld extends JPanel implements Runnable {
         }
     }
 
-
+    /**
+     * Adds power-up walls to the game map.
+     *
+     * This method places three power-up walls symmetrically in the game world. Each wall has a specific power-up
+     * associated with it, such as double damage, health boost, or half health. The power-up images are also set
+     * for each wall.
+     *
+     * @param wallWidth the width of the walls
+     * @param wallHeight the height of the walls
+     */
     void powerUpWalls(int wallWidth, int wallHeight) {
-        // Six power-ups placed symmetrically
+        // 3 power-ups placed symmetrically
+
+        // Double Damage Power-Up
         Wall breakableWall1 = new Wall(GameConstants.GAME_WORLD_WIDTH / 2 - 200, GameConstants.GAME_WORLD_HEIGHT / 2, wallWidth, wallHeight, true, breakableWallImg);
         breakableWall1.setDoubleDamage(true);
         breakableWall1.setPowerUpImg(doubleDamageImg);
         walls.add(breakableWall1);
 
+        // Health Boost Power-Up
         Wall breakableWall2 = new Wall(GameConstants.GAME_WORLD_WIDTH / 2 + 200, GameConstants.GAME_WORLD_HEIGHT / 2, wallWidth, wallHeight, true, breakableWallImg);
         breakableWall2.setHealthBoost(true);
         breakableWall2.setPowerUpImg(healthBoostImg);
         walls.add(breakableWall2);
 
+        // Half Health Power-Down
         Wall breakableWall3 = new Wall(GameConstants.GAME_WORLD_WIDTH / 2, GameConstants.GAME_WORLD_HEIGHT / 2 - 200, wallWidth, wallHeight, true, breakableWallImg);
         breakableWall3.setHalfHealth(true);
         breakableWall3.setPowerUpImg(halfHealthImg);
         walls.add(breakableWall3);
 
-//        Wall breakableWall4 = new Wall(GameConstants.GAME_WORLD_WIDTH / 2, GameConstants.GAME_WORLD_HEIGHT / 2 + 200, wallWidth, wallHeight, true, breakableWallImg);
-//        breakableWall4.setDoubleDamage(true);
-//        breakableWall4.setPowerUpImg(doubleDamageImg);
-//        walls.add(breakableWall4);
-//
-//        Wall breakableWall5 = new Wall(GameConstants.GAME_WORLD_WIDTH / 2 + 400, GameConstants.GAME_WORLD_HEIGHT / 2 + 400, wallWidth, wallHeight, true, breakableWallImg);
-//        breakableWall5.setHealthBoost(true);
-//        breakableWall5.setPowerUpImg(healthBoostImg);
-//        walls.add(breakableWall5);
-//
-//        Wall breakableWall6 = new Wall(GameConstants.GAME_WORLD_WIDTH / 2 - 400, GameConstants.GAME_WORLD_HEIGHT / 2 - 400, wallWidth, wallHeight, true, breakableWallImg);
-//        breakableWall6.setHalfHealth(true);
-//        breakableWall6.setPowerUpImg(halfHealthImg);
-//        walls.add(breakableWall6);
     }
 
 

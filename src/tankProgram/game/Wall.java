@@ -12,16 +12,16 @@ public class Wall {
     private BufferedImage wallImg;
     private boolean isDestroyed = false;
 
-    private boolean isDoubleDamage; // first powerup
-    private boolean isHealthBoost;
-    private boolean halfHealth; // third power "up" (down)
+    private boolean isDoubleDamage; // first powerup - double damage to other tank
+    private boolean isHealthBoost; // second powerup - sets health to 200
+    private boolean halfHealth; // third power "up" (down) - reduces health by half
 
     private BufferedImage powerUpImg;
     private boolean hasPowerUp; // Indicates if the wall contains a power-up
-    private boolean powerUpVisible;
+    private boolean powerUpVisible; // Indicates if the power-up is visible and active
 
 
-
+    // Constructor for each wall object sets some default values
     public Wall(float x, float y, float width, float height, boolean isDestructible, BufferedImage wallImg) {
         this.x = x;
         this.y = y;
@@ -34,9 +34,12 @@ public class Wall {
         this.halfHealth = false;
     }
 
+    // Getters and Setters
+
     public boolean isDoubleDamage() {
         return isDoubleDamage;
     }
+
     public void setDoubleDamage(boolean doubleDamage) {
         isDoubleDamage = doubleDamage;
     }
@@ -110,6 +113,7 @@ public class Wall {
         return new Rectangle((int) x, (int) y, (int) width, (int) height);
     }
 
+    // Method to draw the wall image
     void drawImage(Graphics g) {
         Graphics2D g2 = (Graphics2D) g;
         if (!isDestroyed) {
