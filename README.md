@@ -170,4 +170,41 @@ By following these steps, you can run your JAR file from the terminal.
 |  Shoot        | SPACEBAR | N        |
 
 ## Rules of the Game:
-   
+
+### Game Objective
+The main goal is to destroy the opponent's tank by shooting bullets and strategically navigating the game world.
+
+### Players
+The game is designed for two players:
+- **Player 1** controls Tank 1.
+- **Player 2** controls Tank 2.
+
+### Health and Lives
+- Each tank starts with 100 health points and 3 lives.
+- When a tank's health reaches 0, it loses a life and is reset to its starting position with full health.
+- If a tank loses all its lives, the game ends, and the opposing player wins.
+
+### Power-Ups
+The game features power-ups/down that appear when certain walls are destroyed. These power-ups or power-down provide temporary benefits or detriments for one life:
+- **Double Damage**: Increases the damage dealt by the tank's bullets.
+- **Health Boost**: Increases the tank's health to 200 points.
+- **Half Health**: Reduces the tank's health by half. Immediately once for that life.
+
+### Walls
+The game map contains both breakable and unbreakable walls:
+- **Unbreakable Walls**: Indestructible and block the movement of tanks and bullets.
+- **Breakable Walls**: Can be destroyed by shooting bullets at them. Some breakable walls may contain power-ups.
+
+### Collision Handling
+- Tanks will stop moving when colliding with walls or other tanks.
+- Bullets will be destroyed upon collision with walls or tanks.
+- Power-ups/power-down will be applied and then disappear from the map upon a tank colliding with the item after the breakable wall containing it has been destroyed.
+
+### Winning the Game
+- The game continues until one player's tank loses all its lives.
+- The player whose tank remains with at least one life is declared the winner.
+
+### User Interface
+- The game features a split-screen view, with Player 1's view on the left and Player 2's view on the right.
+- A mini-map is displayed at the top center of the screen, showing the entire game world.
+- Each player's remaining lives and health are displayed at the top of the screen, with health bars and heart icons.
