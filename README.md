@@ -42,8 +42,7 @@ java -jar csc413-tankgame-adixsharma.jar
 ```
 
 By following these steps, you can run your JAR file from the terminal.
-
-# Required Information when Submitting Tank Game
+# Game Information
 
 ## Version of Java Used: 22.0.1
 
@@ -66,7 +65,6 @@ By following these steps, you can run your JAR file from the terminal.
 [//]: # (12. #### Run the Project: To run the project, locate the Launcher.java class, right-click on it, and select Run 'Main.main&#40;&#41;'.)
 
 ## Steps to Build your Project:
-## Steps to Build Your Project
 
 ### Using IntelliJ IDEA
 
@@ -114,7 +112,7 @@ By following these steps, you can run your JAR file from the terminal.
       ```
     - This command runs the `Launcher` class from the `out` directory.
  
-## Steps to run your Project:
+## Steps to run the Project:
 
 ### Using IntelliJ IDEA
 
@@ -171,4 +169,5 @@ By following these steps, you can run your JAR file from the terminal.
 |  Rotate Right | D        | L        |
 |  Shoot        | SPACEBAR | N        |
 
-<!-- you may add more controls if you need to. -->
+## Rules of the Game:
+   
