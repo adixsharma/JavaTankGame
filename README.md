@@ -1,4 +1,4 @@
-# tankgame
+# Tankgame
 
 
 | Student Information |                         |
