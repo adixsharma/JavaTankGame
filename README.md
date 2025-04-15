@@ -1,4 +1,4 @@
-# csc413-tankgame
+# tankgame
 
 
 | Student Information |                         |
@@ -9,10 +9,6 @@
 
 ## Purpose of jar Folder 
 The jar folder will be used to store the built jar of your term-project.
-
-`NO SOURCE CODE SHOULD BE IN THIS FOLDER. DOING SO WILL CAUSE POINTS TO BE DEDUCTED`
-
-`THIS FOLDER CAN NOT BE DELETED OR MOVED`
 
 ## Steps to Run the JAR File
 
